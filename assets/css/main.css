@@ -1,0 +1,40 @@
+@import '@fontsource-variable/inter';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-canvas text-ink-900 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand/60 ring-offset-2 ring-offset-canvas;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-ink-200 bg-white shadow-card;
+  }
+
+  .field-control {
+    @apply block w-full rounded-lg border-0 bg-white text-sm text-ink-900 shadow-sm ring-1 ring-inset ring-ink-300 transition placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ink-900 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500;
+  }
+
+  .field-control[aria-invalid='true'] {
+    @apply ring-rose-300 focus:ring-rose-500;
+  }
+}

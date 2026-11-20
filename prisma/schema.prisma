@@ -1,0 +1,63 @@
+// Prisma schema shared by local development (Docker PostgreSQL 16)
+// and production (Neon PostgreSQL on Vercel).
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local machines, "rhel-openssl-3.0.x" for Vercel serverless functions.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Runtime connection. On Neon this is the pooled (PgBouncer) connection string.
+  url       = env("DATABASE_URL")
+  // Direct (non-pooled) connection used by Prisma Migrate. Locally same as DATABASE_URL.
+  directUrl = env("DIRECT_URL")
+}
+
+enum ContentType {
+  SOCIAL_POST
+  BLOG_POST
+  WEB_PAGE
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  name        String    @db.VarChar(120)
+  contactName String?   @map("contact_name") @db.VarChar(120)
+  email       String?   @db.VarChar(254)
+  phone       String?   @db.VarChar(32)
+  industry    String?   @db.VarChar(80)
+  contents    Content[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@index([createdAt])
+  @@map("clients")
+}
+
+model Content {
+  id          String        @id @default(cuid())
+  title       String        @db.VarChar(200)
+  body        String?       @db.Text
+  type        ContentType
+  status      ContentStatus @default(DRAFT)
+  clientId    String        @map("client_id")
+  // Restrict: a client that still owns contents cannot be deleted.
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  publishedAt DateTime?     @map("published_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([clientId, status])
+  @@index([status])
+  @@index([createdAt])
+  @@map("contents")
+}

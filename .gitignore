@@ -1,0 +1,31 @@
+# Nuxt build output
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Environment variables (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
+# Test coverage
+coverage
+
+# Misc
+.DS_Store
+.fleet
+.idea
+*.local

@@ -1,0 +1,27 @@
+# Local PostgreSQL for kilit-content-panel only.
+# Container, volume and network names are project-specific to avoid
+# collisions with other local projects.
+name: kilit-content-panel
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kilit-content-panel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kilit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-kilit_content_panel}
+    ports:
+      - '127.0.0.1:5435:5432'
+    volumes:
+      - kilit_content_panel_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kilit_content_panel_pgdata:
+    name: kilit_content_panel_pgdata
