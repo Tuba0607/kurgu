@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { CalendarDays, ChevronLeft, ChevronRight, Info } from 'lucide-vue-next'
 
 /**
  * Turkish date picker: type "gg.aa.yyyy" or pick from a calendar (Turkish month
- * and day names, week starts on Monday, "Bugün" and "Temizle"). The value is
- * "YYYY-MM-DD" or '' (empty). Keyboard: arrows move by day / week, PageUp /
+ * and day names, week starts on Monday, quick picks, "Bugün" and "Temizle"). The
+ * value is "YYYY-MM-DD" or '' (empty). Keyboard: arrows move by day / week, PageUp /
  * PageDown by month, Enter selects, Escape closes.
+ * Past days stay selectable but look faded; a past value shows an info note
+ * under the field (not an error: e.g. recording a date that already happened).
  */
 defineOptions({ inheritAttrs: false })
 
@@ -22,7 +24,17 @@ const input = ref<HTMLInputElement | null>(null)
 const popover = ref<HTMLElement | null>(null)
 const isOpen = ref(false)
 const text = ref(isoToDisplay(model.value))
-const { style: floatingStyle } = useFloating(field, isOpen, { maxHeight: 360, matchWidth: false })
+// Opens upwards when the whole calendar does not fit below (in a modal: above the footer).
+// Anchored to the input (not the wrapper, which also holds the past-date note).
+const { style: floatingStyle, update: updatePosition } = useFloating(input, isOpen, {
+  maxHeight: 460,
+  matchWidth: false,
+  avoidClipping: true,
+  floating: popover,
+})
+
+const attrs = useAttrs()
+const pastNoteId = `${baseId}-past`
 
 watch(model, (value) => {
   if (displayToIso(text.value) !== value) text.value = isoToDisplay(value)
@@ -31,6 +43,10 @@ watch(model, (value) => {
 // Month shown in the calendar and the keyboard-focused day
 const todayIso = toIsoDate(new Date())
 const focusedIso = ref(model.value || todayIso)
+const quickOptions = quickDateOptions(todayIso)
+// ISO strings compare in date order.
+const isPastValue = computed(() => !!model.value && model.value < todayIso)
+const describedBy = computed(() => [attrs['aria-describedby'], isPastValue.value && pastNoteId].filter(Boolean).join(' ') || undefined)
 const view = computed(() => {
   const date = fromIsoDate(focusedIso.value) ?? new Date()
   return { year: date.getFullYear(), month: date.getMonth() }
@@ -39,6 +55,7 @@ const days = computed(() => buildMonthGrid(view.value.year, view.value.month).ma
   iso: toIsoDate(date),
   day: date.getDate(),
   inMonth: date.getMonth() === view.value.month,
+  past: toIsoDate(date) < todayIso,
   label: `${date.getDate()} ${MONTH_NAMES_TR[date.getMonth()]} ${date.getFullYear()}, ${WEEKDAY_LONG_TR[(date.getDay() + 6) % 7]}`,
 })))
 
@@ -64,9 +81,12 @@ async function focusDay() {
   popover.value?.querySelector<HTMLButtonElement>(`[data-iso="${focusedIso.value}"]`)?.focus()
 }
 
-function open() {
+async function open() {
   focusedIso.value = model.value || todayIso
   isOpen.value = true
+  // Position again once rendered, with the calendar's real height.
+  await nextTick()
+  updatePosition()
   focusDay()
 }
 
@@ -143,6 +163,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
       placeholder="gg.aa.yyyy"
       maxlength="10"
       :aria-invalid="invalid || undefined"
+      :aria-describedby="describedBy"
       class="field-control h-10 pl-3 pr-10 tabular-nums"
       @input="onTextInput"
       @blur="onTextBlur"
@@ -174,6 +195,20 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
         :style="floatingStyle"
         @keydown="onPopoverKeydown"
       >
+        <div class="mb-2 flex gap-1 border-b border-ink-100 pb-2.5">
+          <button
+            v-for="option in quickOptions"
+            :key="option.label"
+            type="button"
+            class="whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium transition-colors"
+            :class="option.iso === model ? 'bg-primary text-primary-ink' : 'bg-ink-100 text-ink-700 hover:bg-ink-200 hover:text-ink-900'"
+            :aria-label="`${option.label}: ${isoToDisplay(option.iso)}`"
+            @click="select(option.iso)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+
         <div class="mb-2 flex items-center justify-between">
           <button
             type="button"
@@ -228,7 +263,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
             :class="[
               day.iso === model
                 ? 'bg-primary font-semibold text-primary-ink'
-                : day.inMonth ? 'text-ink-800 hover:bg-ink-100' : 'text-ink-400 hover:bg-ink-100',
+                : day.past
+                  ? `hover:bg-ink-100 ${day.inMonth ? 'text-ink-400' : 'text-ink-300'}`
+                  : day.inMonth ? 'text-ink-800 hover:bg-ink-100' : 'text-ink-400 hover:bg-ink-100',
               day.iso === todayIso && day.iso !== model && 'font-semibold ring-1 ring-inset ring-ink-300',
             ]"
             @click="select(day.iso)"
@@ -255,5 +292,18 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
         </div>
       </div>
     </Teleport>
+
+    <p
+      v-if="isPastValue"
+      :id="pastNoteId"
+      role="status"
+      class="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium text-info-ink"
+    >
+      <Info
+        class="size-3.5 shrink-0"
+        aria-hidden="true"
+      />
+      Bu tarih geçmişte kaldı
+    </p>
   </div>
 </template>

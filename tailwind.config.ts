@@ -72,6 +72,8 @@ export default {
         },
         // Warning red for overdue dates; deliberately different from the coral CTA colour
         danger: '#C8372D',
+        // Neutral information (not an error), e.g. "this date is in the past". ink: 7.4:1 on surface.
+        info: { DEFAULT: '#3D6FA8', soft: '#E8EFF7', ink: '#2B5583' },
       },
       fontFamily: {
         sans: ['"DM Sans Variable"', ...defaultTheme.fontFamily.sans],

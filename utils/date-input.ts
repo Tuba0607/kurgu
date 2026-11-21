@@ -46,3 +46,26 @@ export function buildMonthGrid(year: number, month: number): Date[] {
   const offset = (first.getDay() + 6) % 7 // Monday = 0
   return Array.from({ length: 42 }, (_, index) => new Date(year, month, 1 - offset + index, 12))
 }
+
+/** Adds whole days to a "YYYY-MM-DD" value (local calendar days). */
+export function addDaysIso(iso: string, days: number): string {
+  const date = fromIsoDate(iso) ?? new Date()
+  date.setDate(date.getDate() + days)
+  return toIsoDate(date)
+}
+
+/** The next Monday strictly after the given day (a Monday gives the following week's). */
+export function nextMondayIso(iso: string): string {
+  const date = fromIsoDate(iso) ?? new Date()
+  const daysFromMonday = (date.getDay() + 6) % 7 // Monday = 0
+  return addDaysIso(toIsoDate(date), 7 - daysFromMonday)
+}
+
+/** Quick picks shown above the calendar. */
+export function quickDateOptions(todayIso: string): { label: string, iso: string }[] {
+  return [
+    { label: 'Yarın', iso: addDaysIso(todayIso, 1) },
+    { label: 'Gelecek Pazartesi', iso: nextMondayIso(todayIso) },
+    { label: '1 hafta sonra', iso: addDaysIso(todayIso, 7) },
+  ]
+}

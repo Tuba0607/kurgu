@@ -7,6 +7,13 @@ interface FloatingOptions {
   maxHeight?: number
   /** Match the anchor's width (lists) instead of a fixed width (calendar). */
   matchWidth?: boolean
+  /**
+   * For layers that should not be cut (calendar): open below only when the whole
+   * layer fits, otherwise above; inside a modal the footer is the bottom limit.
+   * Pass the floating element so its natural height can be measured.
+   */
+  avoidClipping?: boolean
+  floating?: Ref<HTMLElement | null>
 }
 
 /**
@@ -16,7 +23,7 @@ interface FloatingOptions {
  * there. Use it with <Teleport to="body">.
  */
 export function useFloating(anchor: Ref<HTMLElement | null>, open: Ref<boolean>, options: FloatingOptions = {}) {
-  const { gap = 6, maxHeight = 280, matchWidth = true } = options
+  const { gap = 6, maxHeight = 280, matchWidth = true, avoidClipping = false, floating } = options
   const style = ref<CSSProperties>({})
   const placement = ref<'bottom' | 'top'>('bottom')
 
@@ -24,9 +31,18 @@ export function useFloating(anchor: Ref<HTMLElement | null>, open: Ref<boolean>,
     const rect = anchor.value?.getBoundingClientRect()
     if (!rect) return
     const margin = 8
-    const below = window.innerHeight - rect.bottom - gap - margin
+    // Inside a modal, a layer must not cover the footer's buttons.
+    const footer = avoidClipping ? anchor.value?.closest('[role="dialog"]')?.querySelector('footer') : null
+    const bottomLimit = footer ? footer.getBoundingClientRect().top : window.innerHeight
+    const below = bottomLimit - rect.bottom - gap - margin
     const above = rect.top - gap - margin
-    placement.value = below >= Math.min(maxHeight, 200) || below >= above ? 'bottom' : 'top'
+    if (avoidClipping) {
+      const needed = Math.min(floating?.value?.scrollHeight || maxHeight, maxHeight)
+      placement.value = below >= needed ? 'bottom' : above >= needed ? 'top' : below >= above ? 'bottom' : 'top'
+    }
+    else {
+      placement.value = below >= Math.min(maxHeight, 200) || below >= above ? 'bottom' : 'top'
+    }
     const available = placement.value === 'bottom' ? below : above
     style.value = {
       position: 'fixed',
