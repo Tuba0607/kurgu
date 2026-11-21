@@ -4,6 +4,7 @@ import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/conte
 import { fromSlug, QUERY_KEYS, STATUS_SLUGS } from '#shared/constants/routes'
 import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
 import type { ClientDetail, ClientListItem, ContentListPage } from '~/types/api'
+import type { ActionsMenuItem } from '~/types/ui'
 import type { StatusFilterValue } from '~/utils/content-filters'
 
 const route = useRoute()
@@ -119,6 +120,12 @@ function onClientSaved(updated: ClientListItem) {
 
 // Delete: cascades to the client's contents (the dialog shows how many).
 const deleteOpen = ref(false)
+
+// "⋯" menu (header on desktop, back-link row on phones)
+const actionItems: ActionsMenuItem[] = [{ key: 'delete', label: 'Müşteriyi sil', icon: Trash2, danger: true }]
+function onAction(key: string) {
+  if (key === 'delete') deleteOpen.value = true
+}
 const deleting = ref(false)
 const toast = useToast()
 
@@ -162,16 +169,41 @@ function onContentSaved() {
 
 <template>
   <div>
-    <NuxtLink
-      to="/musteriler"
-      class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900"
-    >
-      <ArrowLeft
-        class="size-4"
-        aria-hidden="true"
-      />
-      Müşteriler
-    </NuxtLink>
+    <!-- Back link; on phones the page actions sit on the same row (44px touch targets) -->
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <NuxtLink
+        to="/musteriler"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900"
+      >
+        <ArrowLeft
+          class="size-4"
+          aria-hidden="true"
+        />
+        Müşteriler
+      </NuxtLink>
+      <div
+        v-if="client"
+        class="-my-2.5 -mr-2.5 flex items-center md:hidden"
+      >
+        <button
+          type="button"
+          class="inline-flex size-11 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+          aria-label="Müşteriyi düzenle"
+          @click="clientModalOpen = true"
+        >
+          <Pencil
+            class="size-5"
+            aria-hidden="true"
+          />
+        </button>
+        <UiActionsMenu
+          :items="actionItems"
+          label="Diğer işlemler"
+          :sheet-title="client.name"
+          @select="onAction"
+        />
+      </div>
+    </div>
 
     <!-- Not found -->
     <div
@@ -233,7 +265,7 @@ function onContentSaved() {
 
     <template v-else>
       <!-- Header: avatar beside the name keeps the section compact -->
-      <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="flex min-w-0 items-center gap-4">
           <span
             class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-base font-semibold text-white"
@@ -251,18 +283,40 @@ function onContentSaved() {
             </p>
           </div>
         </div>
-        <UiButton
-          class="self-start sm:self-auto"
-          @click="openCreate"
-        >
-          <template #icon>
-            <FilePlus2
-              class="size-4"
-              aria-hidden="true"
-            />
-          </template>
-          Bu müşteriye içerik ekle
-        </UiButton>
+        <!-- Desktop: [Düzenle] [⋯] [Bu müşteriye içerik ekle]; phones: only the full-width primary action -->
+        <div class="flex shrink-0 items-center gap-2">
+          <UiButton
+            variant="secondary"
+            class="max-md:hidden"
+            @click="clientModalOpen = true"
+          >
+            <template #icon>
+              <Pencil
+                class="size-4"
+                aria-hidden="true"
+              />
+            </template>
+            Düzenle
+          </UiButton>
+          <UiActionsMenu
+            :items="actionItems"
+            label="Diğer işlemler"
+            class="max-md:hidden"
+            @select="onAction"
+          />
+          <UiButton
+            class="max-md:w-full"
+            @click="openCreate"
+          >
+            <template #icon>
+              <FilePlus2
+                class="size-4"
+                aria-hidden="true"
+              />
+            </template>
+            Bu müşteriye içerik ekle
+          </UiButton>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
@@ -271,47 +325,12 @@ function onContentSaved() {
           class="card p-5"
           aria-labelledby="client-info-title"
         >
-          <div class="flex items-center justify-between gap-3">
-            <h2
-              id="client-info-title"
-              class="section-label whitespace-nowrap"
-            >
-              Müşteri bilgileri
-            </h2>
-            <!-- Below 393px the actions are icon-only (aria-label keeps the name) so the heading stays on one line -->
-            <div class="-my-1 -mr-2 flex shrink-0 items-center">
-              <UiButton
-                variant="ghost"
-                size="sm"
-                class="max-[392px]:w-8 max-[392px]:px-0"
-                aria-label="Müşteri bilgilerini düzenle"
-                @click="clientModalOpen = true"
-              >
-                <template #icon>
-                  <Pencil
-                    class="size-3.5"
-                    aria-hidden="true"
-                  />
-                </template>
-                <span class="max-[392px]:sr-only">Düzenle</span>
-              </UiButton>
-              <UiButton
-                variant="ghost"
-                size="sm"
-                class="max-[392px]:w-8 max-[392px]:px-0"
-                aria-label="Müşteriyi sil"
-                @click="deleteOpen = true"
-              >
-                <template #icon>
-                  <Trash2
-                    class="size-3.5"
-                    aria-hidden="true"
-                  />
-                </template>
-                <span class="max-[392px]:sr-only">Sil</span>
-              </UiButton>
-            </div>
-          </div>
+          <h2
+            id="client-info-title"
+            class="section-label"
+          >
+            Müşteri bilgileri
+          </h2>
           <dl class="mt-3 divide-y divide-ink-100 text-sm">
             <div class="flex justify-between gap-4 py-2.5">
               <dt class="shrink-0 text-ink-500">

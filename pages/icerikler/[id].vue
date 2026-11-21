@@ -7,6 +7,7 @@ import {
   SOCIAL_PLATFORM_LABELS,
 } from '#shared/constants/content'
 import type { ContentDetail } from '~/types/api'
+import type { ActionsMenuItem } from '~/types/ui'
 
 const route = useRoute()
 const toast = useToast()
@@ -74,6 +75,12 @@ async function deleteContent() {
 
 const editOpen = ref(false)
 
+// "⋯" menu (header on desktop, back-link row on phones)
+const actionItems: ActionsMenuItem[] = [{ key: 'delete', label: 'İçeriği sil', icon: Trash2, danger: true }]
+function onAction(key: string) {
+  if (key === 'delete') deleteOpen.value = true
+}
+
 // Body view: plain text or a type-specific preview (WAI-ARIA tabs).
 const bodyTabs = [
   { value: 'text', label: 'Metin' },
@@ -105,16 +112,41 @@ function onSaved(updated: ContentDetail) {
 
 <template>
   <div>
-    <NuxtLink
-      to="/icerikler"
-      class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900"
-    >
-      <ArrowLeft
-        class="size-4"
-        aria-hidden="true"
-      />
-      İçerikler
-    </NuxtLink>
+    <!-- Back link; on phones the page actions sit on the same row (44px touch targets) -->
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <NuxtLink
+        to="/icerikler"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900"
+      >
+        <ArrowLeft
+          class="size-4"
+          aria-hidden="true"
+        />
+        İçerikler
+      </NuxtLink>
+      <div
+        v-if="content"
+        class="-my-2.5 -mr-2.5 flex items-center md:hidden"
+      >
+        <button
+          type="button"
+          class="inline-flex size-11 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+          aria-label="İçeriği düzenle"
+          @click="editOpen = true"
+        >
+          <Pencil
+            class="size-5"
+            aria-hidden="true"
+          />
+        </button>
+        <UiActionsMenu
+          :items="actionItems"
+          label="Diğer işlemler"
+          :sheet-title="content.title"
+          @select="onAction"
+        />
+      </div>
+    </div>
 
     <!-- Not found -->
     <div
@@ -181,6 +213,7 @@ function onSaved(updated: ContentDetail) {
       <UiPageHeader
         :title="content.title"
         compact
+        desktop-actions
       >
         <template #eyebrow>
           <div class="mb-3 flex flex-wrap items-center gap-3">
@@ -201,18 +234,6 @@ function onSaved(updated: ContentDetail) {
         </template>
         <template #actions>
           <UiButton
-            variant="ghost"
-            @click="deleteOpen = true"
-          >
-            <template #icon>
-              <Trash2
-                class="size-4"
-                aria-hidden="true"
-              />
-            </template>
-            Sil
-          </UiButton>
-          <UiButton
             variant="secondary"
             @click="editOpen = true"
           >
@@ -224,6 +245,11 @@ function onSaved(updated: ContentDetail) {
             </template>
             Düzenle
           </UiButton>
+          <UiActionsMenu
+            :items="actionItems"
+            label="Diğer işlemler"
+            @select="onAction"
+          />
         </template>
       </UiPageHeader>
 

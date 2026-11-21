@@ -6,6 +6,8 @@ defineProps<{
   accentDot?: boolean
   /** Smaller title for long, user-written titles (content detail). */
   compact?: boolean
+  /** Actions only from 768px; on phones the page shows them elsewhere (e.g. next to the back link). */
+  desktopActions?: boolean
 }>()
 </script>
 
@@ -32,7 +34,8 @@ defineProps<{
     </div>
     <div
       v-if="$slots.actions"
-      class="flex shrink-0 flex-wrap gap-2 sm:flex-nowrap"
+      class="shrink-0 flex-wrap gap-2 sm:flex-nowrap"
+      :class="desktopActions ? 'hidden md:flex' : 'flex'"
     >
       <slot name="actions" />
     </div>
