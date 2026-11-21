@@ -38,19 +38,29 @@ useFocusTrap(panel, isOpen, {
 })
 useScrollLock(isOpen)
 
-// Mobile keyboards shrink the *visual* viewport, not the layout viewport. Sizing
-// the overlay to the visual viewport puts the footer directly on top of the keyboard.
-const viewportStyle = ref<Record<string, string>>({})
-// With the keyboard open the home-indicator safe area is hidden behind it, so the
-// footer drops its safe-area padding (otherwise a gap shows above the keyboard).
-const keyboardOpen = ref(false)
+// Phones (< 640px, where dialogs are full screen or bottom sheets):
+// the overlay always covers the whole *layout* viewport (100lvh), so the page can
+// never show through: not behind the keyboard, not behind Safari's bottom bar.
+// The keyboard and the bar only shrink the *visual* viewport; the panel starts at its
+// top (`top`) and the part of the screen below it (`bottomGap`) becomes panel padding
+// in the panel's own colour, so the footer buttons sit right on the keyboard / bar.
+const overlay = ref<HTMLElement | null>(null)
+const viewportFit = ref({ top: 0, bottomGap: 0 })
+const isPhoneDialog = ref(false)
+
+const overlayStyle = computed(() => (isPhoneDialog.value ? { paddingTop: `${viewportFit.value.top}px` } : undefined))
+const panelStyle = computed(() => (isPhoneDialog.value ? { paddingBottom: `${viewportFit.value.bottomGap}px` } : undefined))
 
 function syncVisualViewport() {
+  isPhoneDialog.value = window.innerWidth < 640
   const viewport = window.visualViewport
-  if (!viewport) return
-  viewportStyle.value = { top: `${viewport.offsetTop}px`, height: `${viewport.height}px` }
-  keyboardOpen.value = window.innerHeight - viewport.height > 120
-  // Measure after the new height has been applied to the DOM.
+  if (!viewport || !isPhoneDialog.value) return
+  const layoutHeight = overlay.value?.clientHeight || window.innerHeight
+  viewportFit.value = {
+    top: Math.max(0, viewport.offsetTop),
+    bottomGap: Math.max(0, Math.round(layoutHeight - viewport.offsetTop - viewport.height)),
+  }
+  // Measure after the new size has been applied to the DOM.
   nextTick(() => requestAnimationFrame(revealFocusedField))
 }
 
@@ -63,13 +73,22 @@ const FIELD_MARGIN = 12
 function revealFocusedField() {
   const field = focusedField
   const container = body.value
-  if (!field || !container || !container.contains(field) || !field.contains(document.activeElement)) return
-  const fieldRect = field.getBoundingClientRect()
+  const active = document.activeElement as HTMLElement | null
+  if (!field || !container || !active || !container.contains(field) || !field.contains(active)) return
   const bodyRect = container.getBoundingClientRect()
-  const overTop = bodyRect.top + FIELD_MARGIN - fieldRect.top
-  const underBottom = fieldRect.bottom - (bodyRect.bottom - FIELD_MARGIN)
+  // Whole field (label + control + an open inline list) when it fits; otherwise the
+  // control with its list (their wrapper), which matters more than the label.
+  let target = field
+  let margin = FIELD_MARGIN
+  if (field.getBoundingClientRect().height > bodyRect.height - 2 * FIELD_MARGIN && active.parentElement && field.contains(active.parentElement)) {
+    target = active.parentElement
+    margin = 0
+  }
+  const rect = target.getBoundingClientRect()
+  const overTop = bodyRect.top + margin - rect.top
+  const underBottom = rect.bottom - (bodyRect.bottom - margin)
   if (overTop > 0) container.scrollTop -= overTop
-  // Scroll down only as far as the label can stay visible.
+  // Scroll down only as far as the top of the target can stay visible.
   else if (underBottom > 0) container.scrollTop += Math.min(underBottom, -overTop)
 }
 
@@ -86,14 +105,15 @@ function toggleViewportTracking(active: boolean) {
   const viewport = window.visualViewport
   if (!viewport) return
   if (active) {
-    syncVisualViewport()
+    // After render, so the overlay's 100lvh height can be measured.
+    nextTick(syncVisualViewport)
     viewport.addEventListener('resize', syncVisualViewport)
     viewport.addEventListener('scroll', syncVisualViewport)
   }
   else {
     viewport.removeEventListener('resize', syncVisualViewport)
     viewport.removeEventListener('scroll', syncVisualViewport)
-    viewportStyle.value = {}
+    viewportFit.value = { top: 0, bottomGap: 0 }
   }
 }
 
@@ -111,12 +131,16 @@ onBeforeUnmount(() => toggleViewportTracking(false))
     >
       <div
         v-if="open"
-        class="fixed inset-0 z-50 flex touch-pan-y touch-pinch-zoom items-end justify-center sm:items-center sm:p-6"
-        :style="viewportStyle"
+        ref="overlay"
+        class="fixed inset-0 z-50 flex h-lvh touch-pan-y touch-pinch-zoom items-end justify-center sm:h-auto sm:items-center sm:p-6"
+        :class="!compact && 'max-sm:bg-surface'"
+        :style="overlayStyle"
         @focusin="onFocusIn"
       >
+        <!-- Dimmed backdrop behind the panel; full-screen phone dialogs use the panel colour instead -->
         <div
           class="absolute inset-0 bg-ink-950/30 backdrop-blur-[2px]"
+          :class="!compact && 'max-sm:hidden'"
           aria-hidden="true"
           @click="requestClose"
         />
@@ -133,6 +157,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
             size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
             compact ? 'max-h-[92%] rounded-t-card' : 'h-full max-h-full sm:h-auto',
           ]"
+          :style="panelStyle"
         >
           <header
             class="flex shrink-0 items-start justify-between gap-4 border-ink-100 px-5 py-4 sm:px-6"
@@ -155,7 +180,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
             </div>
             <button
               type="button"
-              class="-mr-1.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-600 disabled:opacity-50"
+              class="-mr-1.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-600 disabled:opacity-50"
               aria-label="Kapat"
               :disabled="persistent"
               @click="requestClose"
@@ -179,7 +204,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
           <footer
             v-if="$slots.footer"
             class="flex shrink-0 gap-2 border-t border-ink-100 bg-ink-50/70 px-5 pt-4 max-sm:[&>:last-child]:flex-1 sm:justify-end sm:rounded-b-card sm:px-6 sm:pb-4"
-            :class="keyboardOpen ? 'pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'"
+            :class="viewportFit.bottomGap > 0 ? 'pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'"
           >
             <slot name="footer" />
           </footer>

@@ -108,7 +108,7 @@ defineEmits<{
           <tr
             v-for="content in items"
             :key="content.id"
-            class="group transition-colors hover:bg-ink-50/80"
+            class="group transition-colors hover:bg-ink-50/80 active:bg-ink-50/80"
           >
             <!-- Title takes the remaining width and truncates; other columns are bounded. -->
             <td class="w-full max-w-0 py-3.5 pl-5 pr-3">
@@ -157,7 +157,7 @@ defineEmits<{
             <td class="py-3.5 pl-3 pr-5 text-right">
               <button
                 type="button"
-                class="inline-flex size-8 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
+                class="inline-flex size-8 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-700"
                 :aria-label="`${content.title} içeriğini düzenle`"
                 @click="$emit('edit', content.id)"
               >
@@ -229,7 +229,7 @@ defineEmits<{
         </div>
         <button
           type="button"
-          class="absolute right-3 top-3 flex size-9 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
+          class="absolute right-3 top-3 flex size-9 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-700"
           :aria-label="`${content.title} içeriğini düzenle`"
           @click="$emit('edit', content.id)"
         >

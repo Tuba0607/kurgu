@@ -177,7 +177,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
     <button
       v-if="model"
       type="button"
-      class="absolute right-9 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-900"
+      class="absolute right-9 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
       aria-label="Tarihi temizle"
       @click="clearFromField"
     >
@@ -188,7 +188,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
     </button>
     <button
       type="button"
-      class="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-100 hover:text-ink-900"
+      class="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
       :aria-label="isOpen ? 'Takvimi kapat' : 'Takvimden tarih seç'"
       aria-haspopup="dialog"
       :aria-expanded="isOpen"
@@ -215,7 +215,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
         <div class="mb-2 flex items-center justify-between">
           <button
             type="button"
-            class="flex size-8 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
+            class="flex size-8 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100 active:bg-ink-100"
             aria-label="Önceki ay"
             @click="moveFocus(0, -1)"
           >
@@ -232,7 +232,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
           </p>
           <button
             type="button"
-            class="flex size-8 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
+            class="flex size-8 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100 active:bg-ink-100"
             aria-label="Sonraki ay"
             @click="moveFocus(0, 1)"
           >
@@ -268,7 +268,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
                 ? 'bg-primary font-semibold text-primary-ink'
                 : day.past
                   ? `hover:bg-ink-100 ${day.inMonth ? 'text-ink-400' : 'text-ink-300'}`
-                  : day.inMonth ? 'text-ink-800 hover:bg-ink-100' : 'text-ink-400 hover:bg-ink-100',
+                  : day.inMonth ? 'text-ink-800 hover:bg-ink-100 active:bg-ink-100' : 'text-ink-400 hover:bg-ink-100 active:bg-ink-100',
               day.iso === todayIso && day.iso !== model && 'font-semibold ring-1 ring-inset ring-ink-300',
             ]"
             @click="select(day.iso)"

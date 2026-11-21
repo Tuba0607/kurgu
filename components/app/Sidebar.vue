@@ -48,7 +48,7 @@ function isActive(item: (typeof NAV_ITEMS)[number]): boolean {
       <button
         v-if="closable"
         type="button"
-        class="-mr-2 flex size-9 items-center justify-center rounded-lg text-sidebar-text transition hover:bg-sidebar-hover hover:text-white focus-visible:ring-offset-sidebar"
+        class="-mr-2 flex size-9 items-center justify-center rounded-lg text-sidebar-text transition hover:bg-sidebar-hover active:bg-sidebar-hover hover:text-white focus-visible:ring-offset-sidebar"
         aria-label="Menüyü kapat"
         @click="$emit('close')"
       >
@@ -80,7 +80,7 @@ function isActive(item: (typeof NAV_ITEMS)[number]): boolean {
             class="group relative flex h-11 items-center gap-3 rounded-xl text-sm outline-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/70 focus-visible:ring-offset-0 [&:focus:not(:focus-visible)]:shadow-none"
             :class="[
               collapsed ? 'justify-center px-0' : 'px-3',
-              isActive(item) ? 'bg-sidebar-active font-medium text-white' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white',
+              isActive(item) ? 'bg-sidebar-active font-medium text-white' : 'text-sidebar-text hover:bg-sidebar-hover active:bg-sidebar-hover hover:text-white',
             ]"
             :aria-current="isActive(item) ? 'page' : undefined"
             :title="collapsed ? item.label : undefined"

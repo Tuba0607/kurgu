@@ -55,7 +55,7 @@ defineProps<{ items: ClientListItem[] }>()
           <tr
             v-for="client in items"
             :key="client.id"
-            class="group relative transition-colors hover:bg-ink-50/80"
+            class="group relative transition-colors hover:bg-ink-50/80 active:bg-ink-50/80"
           >
             <td class="w-full max-w-0 py-3.5 pl-5 pr-3">
               <div class="flex items-center gap-3">

@@ -281,7 +281,7 @@ const reviewNote = computed(() => {
             >
               <NuxtLink
                 :to="`/icerikler/${content.id}`"
-                class="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-ink-50/80"
+                class="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-ink-50/80 active:bg-ink-50/80"
               >
                 <span
                   class="h-9 w-1 shrink-0 rounded-full"

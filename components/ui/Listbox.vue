@@ -51,6 +51,10 @@ const activeIndex = ref(-1)
 const placement = ref<'bottom' | 'top'>('bottom')
 const position = ref({ left: 0, width: 0, offset: 0, maxHeight: props.maxHeight })
 
+// Phones: the list opens inside the form flow (pushing the fields below down), at most
+// 5 rows tall, and is scrolled into view with its trigger; desktop keeps the floating list.
+const inline = usePhoneLayout()
+
 const selectedIndex = computed(() => props.options.findIndex(option => option.value === model.value))
 const selectedLabel = computed(() => props.options[selectedIndex.value]?.label ?? props.placeholder)
 
@@ -118,6 +122,7 @@ function open(initialIndex = selectedIndex.value >= 0 ? selectedIndex.value : 0)
   isOpen.value = true
   addListeners()
   setActive(initialIndex)
+  if (inline.value) revealInlineList(trigger.value?.parentElement)
 }
 
 function close() {
@@ -236,7 +241,10 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <Teleport to="body">
+    <Teleport
+      to="body"
+      :disabled="inline"
+    >
       <ul
         v-if="isOpen"
         :id="listboxId"
@@ -244,8 +252,9 @@ onBeforeUnmount(() => {
         role="listbox"
         :aria-label="label"
         tabindex="-1"
-        class="fixed z-[70] overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
-        :style="listStyle"
+        class="overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1"
+        :class="inline ? 'mt-1 max-h-[228px] w-full' : 'fixed z-[70] shadow-popover'"
+        :style="inline ? undefined : listStyle"
         :data-placement="placement"
         @mousedown.prevent
       >
@@ -255,8 +264,9 @@ onBeforeUnmount(() => {
           :key="option.value"
           role="option"
           :aria-selected="option.value === model"
-          class="flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-lg px-3 text-sm"
+          class="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3"
           :class="[
+            inline ? 'min-h-11 text-base' : 'min-h-10 text-sm',
             index === activeIndex ? 'bg-ink-100' : option.value === model && 'bg-ink-50',
             option.value === model ? 'font-medium text-ink-900' : 'text-ink-700',
           ]"

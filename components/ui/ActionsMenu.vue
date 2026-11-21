@@ -115,8 +115,8 @@ onBeforeUnmount(() => {
 const ITEM_BASE = 'flex w-full items-center gap-2.5 text-left outline-none focus-visible:ring-0 focus-visible:ring-offset-0'
 function itemClass(item: ActionsMenuItem) {
   return item.danger
-    ? 'text-danger hover:bg-danger/10 [html:not([data-modality=pointer])_&:focus-visible]:bg-danger/10'
-    : 'text-ink-700 hover:bg-ink-100 [html:not([data-modality=pointer])_&:focus-visible]:bg-ink-100'
+    ? 'text-danger hover:bg-danger/10 active:bg-danger/10 [html:not([data-modality=pointer])_&:focus-visible]:bg-danger/10'
+    : 'text-ink-700 hover:bg-ink-100 active:bg-ink-100 [html:not([data-modality=pointer])_&:focus-visible]:bg-ink-100'
 }
 </script>
 
@@ -124,7 +124,7 @@ function itemClass(item: ActionsMenuItem) {
   <button
     ref="trigger"
     type="button"
-    class="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 md:size-10 md:border md:border-ink-300 md:bg-surface md:text-ink-800 md:hover:border-ink-400 md:hover:bg-ink-50"
+    class="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900 md:size-10 md:border md:border-ink-300 md:bg-surface md:text-ink-800 md:hover:border-ink-400 md:hover:bg-ink-50"
     aria-haspopup="menu"
     :aria-expanded="isOpen"
     :aria-controls="isOpen ? `${baseId}-menu` : undefined"

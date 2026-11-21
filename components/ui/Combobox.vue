@@ -6,6 +6,8 @@ import { toTurkishTitleCase, turkishKey } from '#shared/utils/text'
  * Editable combobox (WAI-ARIA "combobox with list autocomplete"): the user types
  * freely, matching suggestions are listed and a new value can be added.
  * Focus stays in the input; the highlighted option uses aria-activedescendant.
+ * Desktop: floating list. Phones: the list opens inside the form flow (pushing the
+ * fields below down), at most 5 rows tall, and is scrolled into view with the input.
  */
 defineOptions({ inheritAttrs: false })
 
@@ -43,15 +45,21 @@ const options = computed<Option[]>(() => {
     .map(item => ({ value: item, label: item, isNew: false }))
   const exists = props.suggestions.some(item => turkishKey(item) === turkishKey(model.value))
   if (filtering.value && query && !exists) {
+    // The "add" option comes first so it is visible without scrolling the list.
     const normalized = toTurkishTitleCase(model.value)
-    matches.push({ value: normalized, label: props.createLabel(normalized), isNew: true })
+    matches.unshift({ value: normalized, label: props.createLabel(normalized), isNew: true })
   }
   return matches
 })
 
 const showList = computed(() => isOpen.value && options.value.length > 0)
-// Rendered in <body> with fixed positioning: never makes the modal body scroll.
-const { style: floatingStyle } = useFloating(field, showList, { maxHeight: 256 })
+const inline = usePhoneLayout()
+// Desktop: rendered in <body> with fixed positioning, so it never makes the modal body scroll.
+const { style: floatingStyle } = useFloating(field, computed(() => showList.value && !inline.value), { maxHeight: 256 })
+
+watch(showList, (visible) => {
+  if (visible && inline.value) revealInlineList(field.value)
+})
 
 function open() {
   if (isOpen.value) return
@@ -150,13 +158,17 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
       @keydown="onKeydown"
       @blur="onBlur"
     >
-    <Teleport to="body">
+    <Teleport
+      to="body"
+      :disabled="inline"
+    >
       <ul
         v-show="showList"
         :id="listboxId"
         role="listbox"
-        class="z-[70] overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
-        :style="floatingStyle"
+        class="overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1"
+        :class="inline ? 'mt-1 max-h-[228px] w-full' : 'z-[70] shadow-popover'"
+        :style="inline ? undefined : floatingStyle"
       >
         <li
           v-for="(option, index) in options"
@@ -164,8 +176,8 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
           :key="`${option.isNew}-${option.value}`"
           role="option"
           :aria-selected="index === activeIndex"
-          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm"
-          :class="index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700'"
+          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
+          :class="[index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700', inline ? 'min-h-11 text-base' : 'text-sm']"
           @mousedown.prevent="select(option)"
           @mousemove="activeIndex = index"
         >

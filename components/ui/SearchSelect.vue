@@ -32,7 +32,13 @@ const field = ref<HTMLElement | null>(null)
 const query = ref('')
 const isOpen = ref(false)
 // Rendered in <body> with fixed positioning: never makes the modal body scroll.
-const { style: floatingStyle } = useFloating(field, isOpen, { maxHeight: 256 })
+const inline = usePhoneLayout()
+// Desktop: floating list in <body>. Phones: inside the form flow, at most 5 rows, scrolled into view.
+const { style: floatingStyle } = useFloating(field, computed(() => isOpen.value && !inline.value), { maxHeight: 256 })
+
+watch(isOpen, (open) => {
+  if (open && inline.value) revealInlineList(field.value)
+})
 const activeIndex = ref(-1)
 
 const selectedLabel = computed(() => props.options.find(option => option.value === model.value)?.label ?? '')
@@ -137,13 +143,17 @@ watch(activeIndex, async (index) => {
       :class="isOpen && 'rotate-180'"
       aria-hidden="true"
     />
-    <Teleport to="body">
+    <Teleport
+      to="body"
+      :disabled="inline"
+    >
       <ul
         v-show="isOpen"
         :id="listboxId"
         role="listbox"
-        class="z-[70] overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
-        :style="floatingStyle"
+        class="overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1"
+        :class="inline ? 'mt-1 max-h-[228px] w-full' : 'z-[70] shadow-popover'"
+        :style="inline ? undefined : floatingStyle"
       >
         <li
           v-for="(option, index) in filtered"
@@ -151,8 +161,8 @@ watch(activeIndex, async (index) => {
           :key="option.value"
           role="option"
           :aria-selected="option.value === model"
-          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm"
-          :class="index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700'"
+          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
+          :class="[index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700', inline ? 'min-h-11 text-base' : 'text-sm']"
           @mousedown.prevent="select(option)"
           @mousemove="activeIndex = index"
         >

@@ -189,7 +189,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
       >
         <NuxtLink
           :to="{ path: PATHS.contents, query: { [QUERY_KEYS.status]: STATUS_SLUGS[item.status] } }"
-          class="group -mx-2.5 flex h-10 items-center gap-3 rounded-lg px-2.5 text-sm text-ink-700 transition-colors hover:bg-ink-50 hover:text-ink-900"
+          class="group -mx-2.5 flex h-10 items-center gap-3 rounded-lg px-2.5 text-sm text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-50 hover:text-ink-900"
           :class="active === item.status && 'bg-ink-50 text-ink-900'"
           :aria-label="`${item.text}. İçeriklerde göster`"
           @mouseenter="activate(item.status)"

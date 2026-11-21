@@ -20,10 +20,10 @@ const props = withDefaults(defineProps<{
 const NuxtLink = resolveComponent('NuxtLink')
 
 const VARIANT_CLASSES = {
-  primary: 'bg-primary text-primary-ink hover:bg-primary-hover disabled:hover:bg-primary',
-  secondary: 'border border-ink-300 bg-surface text-ink-800 hover:border-ink-400 hover:bg-ink-50',
-  ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
-  danger: 'bg-rose-700 text-white hover:bg-rose-800 disabled:hover:bg-rose-700',
+  primary: 'bg-primary text-primary-ink hover:bg-primary-hover active:bg-primary-hover disabled:hover:bg-primary',
+  secondary: 'border border-ink-300 bg-surface text-ink-800 hover:border-ink-400 hover:bg-ink-50 active:bg-ink-50',
+  ghost: 'text-ink-600 hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900',
+  danger: 'bg-rose-700 text-white hover:bg-rose-800 active:bg-rose-800 disabled:hover:bg-rose-700',
 } as const
 
 const SIZE_CLASSES = {

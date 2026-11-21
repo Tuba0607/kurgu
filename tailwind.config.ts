@@ -14,6 +14,9 @@ const coral = {
 } as const
 
 export default {
+  // `hover:` styles only apply on devices that really hover (mouse / trackpad), so a
+  // tapped button never stays highlighted on touch screens; those get `active:` instead.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     './components/**/*.{vue,ts}',
     './layouts/**/*.vue',

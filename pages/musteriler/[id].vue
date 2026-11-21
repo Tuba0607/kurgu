@@ -401,7 +401,7 @@ function onContentSaved() {
                 <template v-if="row.value">
                   <button
                     type="button"
-                    class="-my-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                    class="-my-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
                     :aria-label="copiedKey === row.key ? 'Kopyalandı' : row.copyLabel"
                     :title="copiedKey === row.key ? 'Kopyalandı' : row.copyLabel"
                     @click="copyValue(row.key, row.value)"

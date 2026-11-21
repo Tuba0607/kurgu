@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
         type="button"
         role="menuitemradio"
         :aria-checked="value === status"
-        class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-700 outline-none hover:bg-ink-100 focus-visible:bg-ink-100 focus-visible:ring-0 focus-visible:ring-offset-0"
+        class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-700 outline-none hover:bg-ink-100 active:bg-ink-100 focus-visible:bg-ink-100 focus-visible:ring-0 focus-visible:ring-offset-0"
         @click="choose(value)"
       >
         <span

@@ -37,7 +37,7 @@ watch(() => route.fullPath, closeMenu)
     <header class="sticky top-0 z-20 flex h-14 items-center gap-3 bg-sidebar px-4 md:hidden">
       <button
         type="button"
-        class="-ml-1 flex size-9 items-center justify-center rounded-lg text-sidebar-text transition hover:bg-sidebar-hover hover:text-white focus-visible:ring-offset-sidebar"
+        class="-ml-1 flex size-9 items-center justify-center rounded-lg text-sidebar-text transition hover:bg-sidebar-hover active:bg-sidebar-hover hover:text-white focus-visible:ring-offset-sidebar"
         aria-label="Menüyü aç"
         aria-controls="mobile-menu"
         :aria-expanded="menuOpen"

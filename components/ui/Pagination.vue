@@ -37,7 +37,7 @@ function go(page: number) {
     <div class="flex items-center gap-1">
       <button
         type="button"
-        class="flex size-8 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-40"
+        class="flex size-8 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-40"
         :disabled="page <= 1"
         aria-label="Önceki sayfa"
         @click="go(page - 1)"
@@ -68,7 +68,7 @@ function go(page: number) {
             v-else
             type="button"
             class="flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-[13px] font-medium tabular-nums transition-colors"
-            :class="item === page ? 'bg-primary text-white' : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900'"
+            :class="item === page ? 'bg-primary text-white' : 'text-ink-600 hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900'"
             :aria-label="`Sayfa ${item}`"
             :aria-current="item === page ? 'page' : undefined"
             @click="go(item)"
@@ -80,7 +80,7 @@ function go(page: number) {
 
       <button
         type="button"
-        class="flex size-8 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-40"
+        class="flex size-8 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-40"
         :disabled="page >= totalPages"
         aria-label="Sonraki sayfa"
         @click="go(page + 1)"

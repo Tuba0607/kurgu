@@ -233,7 +233,7 @@ function openEdit(id: string) {
             class="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition"
             :class="status === tab.value
               ? 'bg-ink-900 text-white'
-              : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900'"
+              : 'text-ink-600 hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900'"
             :aria-pressed="status === tab.value"
             @click="selectStatusTab(tab.value)"
           >
@@ -334,7 +334,7 @@ function openEdit(id: string) {
               <button
                 :ref="el => { chipButtons[chip.param] = (el as HTMLButtonElement | null) ?? undefined }"
                 type="button"
-                class="flex size-7 shrink-0 items-center justify-center rounded text-ink-500 transition-colors hover:bg-ink-200/70 hover:text-ink-900 focus-visible:ring-offset-0"
+                class="flex size-7 shrink-0 items-center justify-center rounded text-ink-500 transition-colors hover:bg-ink-200/70 active:bg-ink-200/70 hover:text-ink-900 focus-visible:ring-offset-0"
                 :aria-label="chip.removeLabel"
                 @click="removeFilter(chip.param)"
               >

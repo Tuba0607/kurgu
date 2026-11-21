@@ -35,7 +35,7 @@ function clear() {
     <button
       v-if="model"
       type="button"
-      class="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-ink-600"
+      class="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-ink-400 hover:bg-ink-100 active:bg-ink-100 hover:text-ink-600"
       aria-label="Aramayı temizle"
       @click="clear"
     >

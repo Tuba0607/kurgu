@@ -57,7 +57,7 @@ async function runAction(id: number, action: ToastAction) {
         </button>
         <button
           type="button"
-          class="-m-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-ink-600"
+          class="-m-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 hover:bg-ink-100 active:bg-ink-100 hover:text-ink-600"
           aria-label="Bildirimi kapat"
           @click="dismiss(toast.id)"
         >
