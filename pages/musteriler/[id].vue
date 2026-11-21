@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, Copy, FilePlus2, FileText, Mail, Pencil, Phone, SearchX, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, FilePlus2, FileText, Pencil, Phone, SearchX, Trash2 } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
 import { fromSlug, QUERY_KEYS, STATUS_SLUGS } from '#shared/constants/routes'
 import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
@@ -94,7 +94,7 @@ function onTabKeydown(event: KeyboardEvent, index: number) {
   tabElements.value[next]?.focus()
 }
 
-// Email: full address is shown (wrapping) and can be copied.
+// Email: one line with ellipsis; the copy button sits left of the address.
 const { copy } = useCopyToClipboard()
 const emailCopied = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
@@ -330,20 +330,11 @@ function onContentSaved() {
               <dt class="shrink-0 text-ink-500">
                 E-posta
               </dt>
-              <dd class="flex min-w-0 flex-1 items-center justify-end gap-1">
+              <dd class="flex min-w-0 flex-1 items-center justify-end">
                 <template v-if="client.email">
-                  <!-- One line: icon left of the address, "…" when it does not fit, full address in the title -->
-                  <a
-                    :href="`mailto:${client.email}`"
-                    :title="client.email"
-                    class="flex min-w-0 items-center gap-1.5 font-medium text-ink-600 hover:text-ink-900 hover:underline"
-                  >
-                    <Mail
-                      class="size-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                    <span class="min-w-0 truncate">{{ client.email }}</span>
-                  </a>
+                  <!-- Right-aligned group: the copy button takes the icon slot left of the address,
+                       so the address ends on the same right edge as the other values.
+                       One line, "…" when it does not fit, full address in the title. -->
                   <button
                     type="button"
                     class="-my-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900"
@@ -362,6 +353,11 @@ function onContentSaved() {
                       aria-hidden="true"
                     />
                   </button>
+                  <a
+                    :href="`mailto:${client.email}`"
+                    :title="client.email"
+                    class="min-w-0 truncate font-medium text-ink-600 hover:text-ink-900 hover:underline"
+                  >{{ client.email }}</a>
                 </template>
                 <span
                   v-else

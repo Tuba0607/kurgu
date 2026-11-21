@@ -105,7 +105,7 @@ onBeforeUnmount(() => {
     >
       <ContentStatusBadge :status="status" />
       <ChevronDown
-        class="size-3.5 text-ink-400 opacity-0 transition-opacity group-hover/status:opacity-100 group-focus-visible/status:opacity-100"
+        class="size-3.5 text-ink-400 opacity-0 transition-opacity group-hover/status:opacity-100 group-focus-visible/status:opacity-100 [@media(hover:none)]:hidden"
         :class="isOpen && 'opacity-100'"
         aria-hidden="true"
       />
