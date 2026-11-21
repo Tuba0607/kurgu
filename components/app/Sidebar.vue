@@ -14,8 +14,8 @@ const route = useRoute()
 
 const NAV_ITEMS = [
   { label: 'Genel bakış', to: '/', icon: LayoutDashboard, exact: true },
-  { label: 'Müşteriler', to: '/clients', icon: Users, exact: false },
-  { label: 'İçerikler', to: '/contents', icon: FileText, exact: false },
+  { label: 'Müşteriler', to: '/musteriler', icon: Users, exact: false },
+  { label: 'İçerikler', to: '/icerikler', icon: FileText, exact: false },
 ] as const
 
 function isActive(item: (typeof NAV_ITEMS)[number]): boolean {

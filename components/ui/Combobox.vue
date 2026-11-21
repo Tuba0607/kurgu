@@ -25,20 +25,24 @@ const baseId = useId()
 const listboxId = `${baseId}-listbox`
 const optionId = (index: number) => `${baseId}-option-${index}`
 
+const field = ref<HTMLElement | null>(null)
 const input = ref<HTMLInputElement | null>(null)
 const isOpen = ref(false)
 const activeIndex = ref(-1)
 
 interface Option { value: string, label: string, isNew: boolean }
 
+// Opening shows every suggestion with the current value checked; the list only
+// filters once the user starts typing (so an existing value is never "lost").
+const filtering = ref(false)
+
 const options = computed<Option[]>(() => {
-  const query = turkishKey(model.value)
+  const query = filtering.value ? turkishKey(model.value) : ''
   const matches = props.suggestions
     .filter(item => !query || turkishKey(item).includes(query))
-    .slice(0, 8)
     .map(item => ({ value: item, label: item, isNew: false }))
-  const exists = props.suggestions.some(item => turkishKey(item) === query)
-  if (query && !exists) {
+  const exists = props.suggestions.some(item => turkishKey(item) === turkishKey(model.value))
+  if (filtering.value && query && !exists) {
     const normalized = toTurkishTitleCase(model.value)
     matches.push({ value: normalized, label: props.createLabel(normalized), isNew: true })
   }
@@ -46,9 +50,15 @@ const options = computed<Option[]>(() => {
 })
 
 const showList = computed(() => isOpen.value && options.value.length > 0)
+// Rendered in <body> with fixed positioning: never makes the modal body scroll.
+const { style: floatingStyle } = useFloating(field, showList, { maxHeight: 256 })
 
 function open() {
+  if (isOpen.value) return
+  filtering.value = false
   isOpen.value = true
+  // Highlight (and scroll to) the current value
+  activeIndex.value = options.value.findIndex(option => turkishKey(option.value) === turkishKey(model.value))
 }
 
 function close() {
@@ -62,7 +72,8 @@ function select(option: Option) {
 }
 
 function onInput() {
-  open()
+  isOpen.value = true
+  filtering.value = true
   activeIndex.value = -1
 }
 
@@ -108,15 +119,18 @@ function onBlur() {
   }, 120)
 }
 
-watch(activeIndex, async (index) => {
-  if (index < 0) return
+watch([activeIndex, isOpen], async ([index, openNow]) => {
+  if (index < 0 || !openNow) return
   await nextTick()
   document.getElementById(optionId(index))?.scrollIntoView({ block: 'nearest' })
 })
 </script>
 
 <template>
-  <div class="relative">
+  <div
+    ref="field"
+    class="relative"
+  >
     <input
       ref="input"
       v-model="model"
@@ -136,35 +150,38 @@ watch(activeIndex, async (index) => {
       @keydown="onKeydown"
       @blur="onBlur"
     >
-    <ul
-      v-show="showList"
-      :id="listboxId"
-      role="listbox"
-      class="absolute inset-x-0 top-full z-20 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
-    >
-      <li
-        v-for="(option, index) in options"
-        :id="optionId(index)"
-        :key="`${option.isNew}-${option.value}`"
-        role="option"
-        :aria-selected="index === activeIndex"
-        class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm"
-        :class="index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700'"
-        @mousedown.prevent="select(option)"
-        @mousemove="activeIndex = index"
+    <Teleport to="body">
+      <ul
+        v-show="showList"
+        :id="listboxId"
+        role="listbox"
+        class="z-[70] overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
+        :style="floatingStyle"
       >
-        <Plus
-          v-if="option.isNew"
-          class="size-4 shrink-0 text-ink-500"
-          aria-hidden="true"
-        />
-        <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
-        <Check
-          v-if="!option.isNew && turkishKey(option.value) === turkishKey(model)"
-          class="size-4 shrink-0 text-ink-900"
-          aria-hidden="true"
-        />
-      </li>
-    </ul>
+        <li
+          v-for="(option, index) in options"
+          :id="optionId(index)"
+          :key="`${option.isNew}-${option.value}`"
+          role="option"
+          :aria-selected="index === activeIndex"
+          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm"
+          :class="index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700'"
+          @mousedown.prevent="select(option)"
+          @mousemove="activeIndex = index"
+        >
+          <Plus
+            v-if="option.isNew"
+            class="size-4 shrink-0 text-ink-500"
+            aria-hidden="true"
+          />
+          <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+          <Check
+            v-if="!option.isNew && turkishKey(option.value) === turkishKey(model)"
+            class="size-4 shrink-0 text-ink-900"
+            aria-hidden="true"
+          />
+        </li>
+      </ul>
+    </Teleport>
   </div>
 </template>

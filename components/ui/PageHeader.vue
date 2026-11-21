@@ -4,6 +4,8 @@ defineProps<{
   description?: string
   /** Adds the coral full stop of the brand ("Stüdyoda bugün.") */
   accentDot?: boolean
+  /** Smaller title for long, user-written titles (content detail). */
+  compact?: boolean
 }>()
 </script>
 
@@ -11,7 +13,10 @@ defineProps<{
   <div class="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
     <div class="min-w-0">
       <slot name="eyebrow" />
-      <h1 class="display-title break-words text-[26px] leading-tight text-ink-900 sm:text-[30px]">
+      <h1
+        class="display-title break-words text-ink-900 [text-wrap:balance]"
+        :class="compact ? 'text-[22px] leading-[1.2] sm:text-[26px] lg:text-[28px]' : 'text-[26px] leading-tight sm:text-[30px]'"
+      >
         {{ title }}<span
           v-if="accentDot"
           class="text-brand"
@@ -27,7 +32,7 @@ defineProps<{
     </div>
     <div
       v-if="$slots.actions"
-      class="flex flex-wrap gap-2"
+      class="flex shrink-0 flex-wrap gap-2 sm:flex-nowrap"
     >
       <slot name="actions" />
     </div>

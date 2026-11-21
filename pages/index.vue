@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, CalendarClock, CalendarX2, FilePlus2, FileText, UserPlus } from 'lucide-vue-next'
 import { LONG_REVIEW_DAYS } from '#shared/constants/content'
+import { CONTENT_SORT_SLUGS, PATHS, QUERY_KEYS, STATUS_SLUGS } from '#shared/constants/routes'
 
 useHead({ title: 'Genel bakış' })
 
@@ -15,8 +16,8 @@ const contentModalOpen = ref(false)
 const today = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
 
 // "İncele →" opens the approval queue, longest waiting first.
-const reviewLink = { path: '/contents', query: { status: 'IN_REVIEW', sort: 'waiting' } }
-const scheduleLink = { path: '/contents', query: { sort: 'scheduled' } }
+const reviewLink = { path: PATHS.contents, query: { [QUERY_KEYS.status]: STATUS_SLUGS.IN_REVIEW, [QUERY_KEYS.sort]: CONTENT_SORT_SLUGS.waiting } }
+const scheduleLink = { path: PATHS.contents, query: { [QUERY_KEYS.sort]: CONTENT_SORT_SLUGS.scheduled } }
 
 const reviewNote = computed(() => {
   const review = data.value?.review
@@ -117,7 +118,7 @@ const reviewNote = computed(() => {
         <div class="card relative flex flex-col justify-between gap-6 overflow-hidden border-sidebar bg-sidebar p-6 text-white sm:col-span-2 sm:p-7">
           <!-- The only decorative element in the app: the "Kesit" mark, cropped -->
           <svg
-            class="pointer-events-none absolute -right-10 -top-12 size-56 opacity-90"
+            class="pointer-events-none absolute -right-6 -top-10 size-28 opacity-60 sm:-right-10 sm:-top-12 sm:size-56 sm:opacity-90"
             viewBox="0 0 32 32"
             aria-hidden="true"
           >
@@ -144,7 +145,7 @@ const reviewNote = computed(() => {
             </p>
             <p
               class="mt-4 text-sm"
-              :class="data.review.longWaiting > 0 ? 'font-medium text-[#F2C27A]' : 'text-sidebar-text'"
+              :class="data.review.longWaiting > 0 ? 'font-medium text-status-review-on-dark' : 'text-sidebar-text'"
             >
               {{ reviewNote }}
             </p>
@@ -180,7 +181,7 @@ const reviewNote = computed(() => {
           </span>
           <span>
             <span class="block font-display text-[44px] font-semibold leading-none tabular-nums tracking-[-0.04em] text-ink-900">{{ formatNumber(data.schedule.dueThisWeek) }}</span>
-            <span class="mt-2 block text-[13px] text-ink-500">Önümüzdeki 7 gün · son 7 günde {{ formatNumber(data.addedLastWeek) }} yeni içerik</span>
+            <span class="mt-2 block text-[13px] text-ink-500">Önümüzdeki 7 gün içinde</span>
           </span>
         </NuxtLink>
         <NuxtLink
@@ -188,17 +189,24 @@ const reviewNote = computed(() => {
           class="card group flex flex-col justify-between gap-5 p-5 transition hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-lift sm:p-6"
         >
           <span class="section-label flex items-center justify-between gap-2">
-            Yayın tarihi geçmiş
+            <span class="flex items-center gap-2">
+              <span
+                v-if="data.schedule.overdue > 0"
+                class="size-2 rounded-full bg-danger"
+                aria-hidden="true"
+              />
+              Yayın tarihi geçmiş
+            </span>
             <CalendarX2
               class="size-[18px] group-hover:text-ink-600"
-              :class="data.schedule.overdue > 0 ? 'text-brand' : 'text-ink-400'"
+              :class="data.schedule.overdue > 0 ? 'text-danger' : 'text-ink-400'"
               aria-hidden="true"
             />
           </span>
           <span>
             <span
               class="block font-display text-[44px] font-semibold leading-none tabular-nums tracking-[-0.04em]"
-              :class="data.schedule.overdue > 0 ? 'text-brand-ink' : 'text-ink-900'"
+              :class="data.schedule.overdue > 0 ? 'text-danger' : 'text-ink-900'"
             >{{ formatNumber(data.schedule.overdue) }}</span>
             <span class="mt-2 block text-[13px] text-ink-500">Planlanan tarihi geçmiş, henüz yayında değil</span>
           </span>
@@ -237,10 +245,12 @@ const reviewNote = computed(() => {
               class="section-label"
             >
               Son eklenen içerikler
+              <!-- Own line on phones, inline from sm -->
+              <span class="mt-1 block font-medium normal-case tracking-normal text-ink-500 sm:ml-1.5 sm:mt-0 sm:inline"><span class="hidden sm:inline">· </span>son 7 günde {{ formatNumber(data.addedLastWeek) }} yeni</span>
             </h2>
             <NuxtLink
-              to="/contents"
-              class="inline-flex items-center gap-1 rounded-md text-sm font-medium text-ink-600 hover:text-ink-900"
+              to="/icerikler"
+              class="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md text-sm font-medium text-ink-600 hover:text-ink-900"
             >
               Tümünü gör
               <ArrowRight
@@ -270,7 +280,7 @@ const reviewNote = computed(() => {
               :key="content.id"
             >
               <NuxtLink
-                :to="`/contents/${content.id}`"
+                :to="`/icerikler/${content.id}`"
                 class="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-ink-50/80"
               >
                 <span

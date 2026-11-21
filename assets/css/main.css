@@ -23,6 +23,15 @@
     outline: none;
   }
 
+  /* Pointer in use (plugins/input-modality.client.ts): no focus rings on clicked
+     buttons, tabs or segments, in any browser. Text fields keep their own focus ring. */
+  html[data-modality='pointer'] :focus-visible:not(input, textarea, select),
+  html[data-modality='pointer'] label:has(:focus-visible) {
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+    outline-color: transparent !important;
+  }
+
   /* Programmatic focus targets (skip link target, dialog panel, result summaries) never show a ring. */
   [tabindex='-1']:not([role='tab']):not([role='option']):focus-visible {
     @apply ring-0 ring-offset-0;

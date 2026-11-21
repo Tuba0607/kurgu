@@ -7,6 +7,8 @@ const props = defineProps<{
   hint?: string
   required?: boolean
   optional?: boolean
+  /** Shows the hint as a warning (e.g. a character limit exceeded) without blocking. */
+  hintWarning?: boolean
 }>()
 
 const id = useId()
@@ -58,7 +60,9 @@ const describedBy = computed(() => {
     <p
       v-else-if="hint"
       :id="hintId"
-      class="mt-1.5 text-[13px] text-ink-500"
+      class="mt-1.5 text-[13px]"
+      :class="hintWarning ? 'font-medium text-danger' : 'text-ink-500'"
+      :aria-live="hintWarning ? 'polite' : undefined"
     >
       {{ hint }}
     </p>

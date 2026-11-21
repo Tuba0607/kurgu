@@ -42,8 +42,9 @@ describe('applyQueryPatch', () => {
 
 describe('content filter reset', () => {
   it('removes search, status, client and page but keeps unrelated params', () => {
-    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', type: 'BLOG_POST', page: '2', ref: 'dashboard' }
-    expect(applyQueryPatch(query, contentFilterResetPatch())).toEqual({ ref: 'dashboard' })
+    const query = { ara: 'koy', durum: 'yayinda', musteri: 'seed_client_mavi_rota', tur: 'blog', sayfa: '2', sirala: 'bekleyen' }
+    // The sort order is kept: it is not a filter.
+    expect(applyQueryPatch(query, contentFilterResetPatch())).toEqual({ sirala: 'bekleyen' })
   })
 
   it('is a no-op when no filter is set', () => {

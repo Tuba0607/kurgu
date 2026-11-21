@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { SearchX, UserPlus, Users } from 'lucide-vue-next'
+import { CLIENT_SORT_SLUGS, fromSlug, QUERY_KEYS } from '#shared/constants/routes'
 import { CLIENT_SORT_LABELS, CLIENT_SORTS, type ClientSortValue } from '#shared/schemas/client'
 import type { ClientListItem } from '~/types/api'
 
 useHead({ title: 'Müşteriler' })
 
-const { input: searchInput, applied: search } = useDebouncedQuerySearch('search')
+const { input: searchInput, applied: search } = useDebouncedQuerySearch(QUERY_KEYS.search)
 
-const sortParam = useRouteQueryValue('sort')
+const sortParam = useRouteQueryValue(QUERY_KEYS.sort)
 const updateQuery = useQueryUpdater({ history: 'push' })
-const sort = computed<ClientSortValue>(() => ((CLIENT_SORTS as readonly string[]).includes(sortParam.value) ? sortParam.value as ClientSortValue : 'newest'))
+const sort = computed<ClientSortValue>(() => fromSlug(CLIENT_SORT_SLUGS, sortParam.value) || 'newest')
 const sortOptions = CLIENT_SORTS.map(value => ({ value, label: CLIENT_SORT_LABELS[value] }))
 const selectedSort = computed({
   get: () => sort.value as string,
-  set: value => updateQuery({ sort: value === 'newest' ? null : value }),
+  set: value => updateQuery({ [QUERY_KEYS.sort]: value === 'newest' ? null : CLIENT_SORT_SLUGS[value as ClientSortValue] }),
 })
 
 const { data: clients, status, error, refresh } = await useFetch('/api/clients', {

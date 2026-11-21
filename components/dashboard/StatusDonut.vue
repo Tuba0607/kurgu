@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ChevronRight } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES, type ContentStatusValue } from '#shared/constants/content'
+import { PATHS, QUERY_KEYS, STATUS_SLUGS } from '#shared/constants/routes'
 
 /**
  * Lightweight SVG donut for the content status distribution (no chart library).
@@ -12,12 +12,14 @@ const props = defineProps<{
 }>()
 
 const VIEWBOX = 120
-const RADIUS = 46
-const STROKE = 14
+const RADIUS = 45
+const STROKE = 18
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 const total = computed(() => CONTENT_STATUSES.reduce((sum, status) => sum + props.counts[status], 0))
-const segments = computed(() => buildDonutSegments(props.counts, CIRCUMFERENCE))
+// The chart is drawn at 160px for a 120-unit viewBox: 1.5 units = 2px gap between slices.
+const SEGMENT_GAP = 1.5
+const segments = computed(() => buildDonutSegments(props.counts, CIRCUMFERENCE, SEGMENT_GAP))
 
 const legend = computed(() => CONTENT_STATUSES.map(status => ({
   status,
@@ -186,8 +188,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
         :key="item.status"
       >
         <NuxtLink
-          :to="{ path: '/contents', query: { status: item.status } }"
-          class="group flex h-10 items-center gap-3 rounded-lg px-2.5 text-sm text-ink-700 transition-colors hover:bg-ink-50 hover:text-ink-900"
+          :to="{ path: PATHS.contents, query: { [QUERY_KEYS.status]: STATUS_SLUGS[item.status] } }"
+          class="group -mx-2.5 flex h-10 items-center gap-3 rounded-lg px-2.5 text-sm text-ink-700 transition-colors hover:bg-ink-50 hover:text-ink-900"
           :class="active === item.status && 'bg-ink-50 text-ink-900'"
           :aria-label="`${item.text}. İçeriklerde göster`"
           @mouseenter="activate(item.status)"
@@ -201,12 +203,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
             aria-hidden="true"
           />
           <span class="min-w-0 flex-1 whitespace-nowrap">{{ item.label }}</span>
-          <span class="font-semibold tabular-nums text-ink-900">{{ formatNumber(counts[item.status]) }}</span>
-          <span class="w-10 text-right text-[13px] tabular-nums text-ink-500">{{ formatPercent(counts[item.status], total) }}</span>
-          <ChevronRight
-            class="-mr-1 size-4 shrink-0 text-ink-300 opacity-0 transition group-hover:translate-x-0.5 group-hover:text-ink-600 group-hover:opacity-100 group-focus-visible:opacity-100"
-            aria-hidden="true"
-          />
+          <!-- Fixed-width, right-aligned columns flush with the card's inner right edge -->
+          <span class="w-8 shrink-0 text-right font-semibold tabular-nums text-ink-900">{{ formatNumber(counts[item.status]) }}</span>
+          <span class="w-11 shrink-0 text-right text-[13px] tabular-nums text-ink-500">{{ formatPercent(counts[item.status], total) }}</span>
         </NuxtLink>
       </li>
     </ul>

@@ -143,7 +143,7 @@ npm run db:down    # container'ı durdurur (veri volume'de kalır)
 | `npm run db:generate` | Prisma Client'ı yeniden üretir |
 | `npm run db:studio` | Prisma Studio'yu açar |
 
-Seed tüm müşteri ve içerikleri **silip** demo verisini yeniden oluşturur; tarihler çalıştırıldığı ana göre hesaplanır (son 6 hafta, bazı içerikler 5 günden uzun süredir onayda, bazılarının yayın tarihi bu hafta ya da geçmiş). Güvenlik için yalnızca yerel veritabanında çalışır; uzak bir veritabanında `SEED_ALLOW_REMOTE=1` gerekir. Tüm firma ve kişi bilgileri kurgusaldır; e-posta adresleri ayrılmış `.example` alan adını kullanır.
+Seed tüm müşteri ve içerikleri **silip** demo verisini yeniden oluşturur; tarihler çalıştırıldığı ana göre hesaplanır (son 6 hafta, bazı içerikler 5 günden uzun süredir onayda, bazılarının yayın tarihi bu hafta ya da geçmiş). Güvenlik için serbestçe yalnızca yerel veritabanında çalışır; uzak bir veritabanında `ALLOW_DEMO_SEED=1` gerekir. Veri `prisma/demo-data.ts` içindedir; seed komutu ve gece sıfırlaması aynı kodu kullanır. Tüm firma ve kişi bilgileri kurgusaldır; e-posta adresleri ayrılmış `.example` alan adını kullanır.
 
 ## Testler ve kalite kontrolleri
 
@@ -178,6 +178,7 @@ Seed tüm müşteri ve içerikleri **silip** demo verisini yeniden oluşturur; t
 | `GET` | `/api/contents/:id` | İçerik detayı ve durum geçmişi |
 | `PATCH` | `/api/contents/:id` | İçerik güncelleme (kısmi) |
 | `DELETE` | `/api/contents/:id` | İçerik silme |
+| `GET` | `/api/cron/reset-demo` | Gece demo sıfırlaması (yalnızca Vercel Cron, `CRON_SECRET` ile) |
 
 ## Proje yapısı
 
@@ -198,9 +199,10 @@ Seed tüm müşteri ve içerikleri **silip** demo verisini yeniden oluşturur; t
 │   ├── schemas/                # Zod doğrulama şemaları
 │   └── utils/                  # Doğrulama ve arama yardımcıları
 ├── server/
-│   ├── api/                    # 13 API endpoint'i
+│   ├── api/                    # 14 API endpoint'i (cron dahil)
+│   ├── middleware/             # Eski İngilizce adreslerin 301 yönlendirmesi
 │   └── utils/                  # Prisma singleton, HTTP/hata yardımcıları, iş kuralları
-├── prisma/                     # Şema, migration'lar ve seed
+├── prisma/                     # Şema, migration'lar, demo verisi ve seed
 ├── tests/
 │   ├── unit/                   # Unit testler
 │   └── api/                    # API integration testleri
@@ -213,38 +215,49 @@ Kod, değişken ve dosya adları İngilizcedir; kullanıcı arayüzü Türkçedi
 ## Tasarım kararları
 
 1. **Ana kart onay bekleyenlere ayrıldı.** Hesap yöneticisinin günlük işi, müşteriden onay bekleyen içerikleri takip etmektir. Toplam sayılar bilgi verir ama eylem gerektirmez; bu yüzden ana kart "kaç içerik bekliyor, kaçı 5 günü geçti" sorusunu yanıtlar ve tek tıkla en uzun bekleyenden sıralı listeye götürür.
-2. **Filtreler URL'de tutulur.** Arama, durum, müşteri, tür, sıralama ve sayfa query parametrelerindedir. Böylece bir filtre bağlantı olarak paylaşılabilir, sayfa yenilense de korunur ve tarayıcının geri tuşu beklenen şekilde çalışır.
+2. **Filtreler URL'de ve Türkçe tutulur** (`/icerikler?durum=onay&sirala=bekleyen`). Arama, durum, müşteri, tür, sıralama ve sayfa query parametrelerindedir; eski İngilizce adresler 301 ile yeni adreslere yönlenir. Böylece bir filtre bağlantı olarak paylaşılabilir, sayfa yenilense de korunur ve tarayıcının geri tuşu beklenen şekilde çalışır.
 3. **Durum, listeden ve geri alınabilir şekilde değişir.** En sık yapılan işlem için detay sayfasına gitmek gerekmez. Yanlış tıklamanın maliyeti düşük kalsın diye her değişiklikten sonra 5 saniyelik "Geri al" sunulur; liste ve detay sayfası aynı mantığı paylaşır.
 4. **Durum renkleri marka renginden ayrıdır.** Mercan yalnızca marka ve birincil eylemler içindir; Taslak / Onay bekliyor / Yayında rozet, grafik ve satır şeridinde aynı token'larla gösterilir. Mercan butonlarda beyaz yerine koyu metin kullanılır, çünkü beyaz metin WCAG AA kontrastını sağlamaz.
 5. **Ön yüz ve API aynı doğrulamayı kullanır.** Zod şemaları `shared/` altındadır; telefon `+90 5XX XXX XX XX`, sektör Türkçe baş harf büyük biçimde normalize edilir. Ön yüz kullanıcıya erken geri bildirim verir, API ise tek doğruluk kaynağıdır.
 
 ## Deployment yaklaşımı
 
-Hedef ortam **Vercel** (uygulama) ve **Neon PostgreSQL**'dir (veritabanı). Yerel ve canlı ortam aynı Prisma şemasını ve API kodunu kullanır.
+Hedef: uygulama **Vercel**'de, veritabanı **Neon PostgreSQL**'de. Vercel, Nuxt'ı sıfır yapılandırmayla tanır ve her PR için önizleme ortamı açar; Neon sunucusuz PostgreSQL sunar, ücretsiz katmanı demo için yeterlidir.
 
-1. Bu proje için ayrı bir Neon projesi ve veritabanı oluşturulur.
-2. Vercel proje ayarlarında iki ortam değişkeni tanımlanır:
-   - `DATABASE_URL`: Neon **pooled** bağlantı adresi (`-pooler` içeren host, `sslmode=require`)
-   - `DIRECT_URL`: Neon **direct** bağlantı adresi
-3. Vercel, Nuxt projesini otomatik tanır; `npm install` sırasında `postinstall` Prisma Client'ı üretir. Prisma şeması Vercel çalışma ortamı için gerekli motoru (`rhel-openssl-3.0.x`) içerir.
-4. Migration'lar build sırasında **otomatik çalıştırılmaz**. Canlı veritabanına yalnızca kontrollü olarak uygulanır:
+> **Demo verisi her gece sıfırlanır.** Canlı demoda yapılan değişiklikler her gece 04:00'te (İstanbul saati) silinir ve demo verisi yeniden yüklenir. Sıfırlama yalnızca `ALLOW_DEMO_SEED=1` olan ortamlarda çalışır.
 
-   ```bash
-   DATABASE_URL="<neon-pooled-url>" DIRECT_URL="<neon-direct-url>" npm run db:deploy
-   ```
+**1. Veritabanı (Neon)**
+1. Neon'da yeni bir proje oluşturun; bölge olarak Vercel fonksiyonlarına yakın bir bölge seçin (ör. Frankfurt, `eu-central-1`).
+2. Bağlantı ekranından iki adresi alın: **pooled** (host'ta `-pooler` geçer) ve **direct**.
 
-Gerçek bağlantı bilgileri yalnızca Vercel ortam değişkenlerinde ve yerel `.env` dosyasında tutulur; hiçbir zaman depoya eklenmez.
+**2. Ortam değişkenleri (Vercel → Project → Settings → Environment Variables)**
 
-**Önerilen dağıtım:** Uygulama için **Vercel** (Nuxt'ı sıfır yapılandırmayla tanır, her PR için önizleme ortamı sunar), veritabanı için **Neon** (sunucusuz PostgreSQL, Vercel ile aynı bölgede çalıştırılabilir ve ücretsiz katmanı demo için yeterlidir). İlk kurulumda migration'lar uygulandıktan sonra demo verisi bir kez yüklenebilir:
+| Değişken | Değer |
+|---|---|
+| `DATABASE_URL` | Neon pooled adresi (`sslmode=require`) |
+| `DIRECT_URL` | Neon direct adresi |
+| `ALLOW_DEMO_SEED` | `1` (yalnızca demo ortamında) |
+| `CRON_SECRET` | En az 16 karakterlik rastgele değer (ör. `openssl rand -hex 32`) |
+
+**3. Şema ve demo verisi (bir kez, kendi bilgisayarınızdan)**
 
 ```bash
-DATABASE_URL="<neon-direct-url>" SEED_ALLOW_REMOTE=1 npm run db:seed
+DATABASE_URL="<neon-direct-url>" DIRECT_URL="<neon-direct-url>" npm run db:deploy
+DATABASE_URL="<neon-direct-url>" ALLOW_DEMO_SEED=1 npm run db:seed
 ```
+
+Migration'lar build sırasında **otomatik çalıştırılmaz**; canlı veritabanına yalnızca bu komutla, kontrollü olarak uygulanır.
+
+**4. Vercel projesi**
+1. GitHub deposunu Vercel'e bağlayın (framework: Nuxt, ek ayar gerekmez). `postinstall` Prisma Client'ı üretir; şema Vercel çalışma ortamı motorunu (`rhel-openssl-3.0.x`) içerir.
+2. `vercel.json` gece sıfırlamasını tanımlar: `0 1 * * *` (UTC) = 04:00 İstanbul. Vercel her çağrıda `Authorization: Bearer <CRON_SECRET>` başlığını gönderir; `/api/cron/reset-demo` başlık yanlışsa `401`, `ALLOW_DEMO_SEED` yoksa `403` döner.
+3. `.vercelignore`, CLI ile yapılan deploy'larda `.env*` ve `.backups/` dosyalarının yüklenmesini engeller; Git üzerinden deploy'da bu dosyalar zaten depoda yoktur.
+
+Gerçek bağlantı bilgileri yalnızca Vercel ortam değişkenlerinde ve yerel `.env` dosyasında tutulur; hiçbir zaman depoya eklenmez.
 
 ## Sonraki adımlar
 
 - **Arşivleme:** Müşteri silmek yerine arşivlemek (içerikler korunur, listelerde gizlenir); şu an silme işlemi içerikleri de kalıcı olarak siler.
 - Kimlik doğrulama ve rol bazlı yetki (hesap yöneticisi / yönetici).
-- Türkçe URL'ler (`/musteriler`, `/icerikler`, `?durum=onay`).
 - ⌘K / Ctrl+K genel arama ve klavye kısayolları.
 - Ekran görüntüleri: `docs/screenshots/` klasörüne eklenecek.

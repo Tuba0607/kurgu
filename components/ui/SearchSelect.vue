@@ -28,8 +28,11 @@ const baseId = useId()
 const listboxId = `${baseId}-listbox`
 const optionId = (index: number) => `${baseId}-option-${index}`
 
+const field = ref<HTMLElement | null>(null)
 const query = ref('')
 const isOpen = ref(false)
+// Rendered in <body> with fixed positioning: never makes the modal body scroll.
+const { style: floatingStyle } = useFloating(field, isOpen, { maxHeight: 256 })
 const activeIndex = ref(-1)
 
 const selectedLabel = computed(() => props.options.find(option => option.value === model.value)?.label ?? '')
@@ -106,7 +109,10 @@ watch(activeIndex, async (index) => {
 </script>
 
 <template>
-  <div class="relative">
+  <div
+    ref="field"
+    class="relative"
+  >
     <input
       v-model="query"
       v-bind="$attrs"
@@ -131,37 +137,40 @@ watch(activeIndex, async (index) => {
       :class="isOpen && 'rotate-180'"
       aria-hidden="true"
     />
-    <ul
-      v-show="isOpen"
-      :id="listboxId"
-      role="listbox"
-      class="absolute inset-x-0 top-full z-20 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
-    >
-      <li
-        v-for="(option, index) in filtered"
-        :id="optionId(index)"
-        :key="option.value"
-        role="option"
-        :aria-selected="option.value === model"
-        class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm"
-        :class="index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700'"
-        @mousedown.prevent="select(option)"
-        @mousemove="activeIndex = index"
+    <Teleport to="body">
+      <ul
+        v-show="isOpen"
+        :id="listboxId"
+        role="listbox"
+        class="z-[70] overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
+        :style="floatingStyle"
       >
-        <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
-        <Check
-          v-if="option.value === model"
-          class="size-4 shrink-0 text-ink-900"
-          aria-hidden="true"
-        />
-      </li>
-      <li
-        v-if="!filtered.length"
-        class="px-3 py-2 text-sm text-ink-500"
-        role="presentation"
-      >
-        {{ emptyText }}
-      </li>
-    </ul>
+        <li
+          v-for="(option, index) in filtered"
+          :id="optionId(index)"
+          :key="option.value"
+          role="option"
+          :aria-selected="option.value === model"
+          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm"
+          :class="index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700'"
+          @mousedown.prevent="select(option)"
+          @mousemove="activeIndex = index"
+        >
+          <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+          <Check
+            v-if="option.value === model"
+            class="size-4 shrink-0 text-ink-900"
+            aria-hidden="true"
+          />
+        </li>
+        <li
+          v-if="!filtered.length"
+          class="px-3 py-2 text-sm text-ink-500"
+          role="presentation"
+        >
+          {{ emptyText }}
+        </li>
+      </ul>
+    </Teleport>
   </div>
 </template>

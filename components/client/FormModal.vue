@@ -143,6 +143,7 @@ async function submit() {
           :aria-describedby="field.describedBy"
           autocomplete="name"
           maxlength="120"
+          placeholder="Örn. Elif Aydın"
         />
       </UiFormField>
 
@@ -159,6 +160,7 @@ async function submit() {
           :invalid="field.invalid"
           :aria-describedby="field.describedBy"
           placeholder="Sektör seçin veya yazın"
+          :create-label="value => `“${value}” sektörünü ekle`"
           maxlength="80"
         />
       </UiFormField>

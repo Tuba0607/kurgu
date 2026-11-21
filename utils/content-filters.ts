@@ -1,3 +1,4 @@
+import { QUERY_KEYS } from '#shared/constants/routes'
 import { CONTENT_STATUS_LABELS, CONTENT_TYPE_LABELS, type ContentStatusValue, type ContentTypeValue } from '#shared/constants/content'
 
 // Filters of the contents list. Their default value is "empty" (no search,
@@ -49,8 +50,9 @@ export function buildActiveFilterChips(filters: ContentFilterState, clientName?:
 }
 
 /** Query patch that resets every content filter to its default (and the page back to 1). */
-export function contentFilterResetPatch(): Record<ContentFilterParam | 'page', null> {
-  return { search: null, status: null, clientId: null, type: null, page: null }
+export function contentFilterResetPatch(): Record<string, null> {
+  const { search, status, clientId, type, page } = QUERY_KEYS
+  return { [search]: null, [status]: null, [clientId]: null, [type]: null, [page]: null }
 }
 
 /** '' stands for the "Tümü" (all) tab. */

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Users } from 'lucide-vue-next'
-import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORMS, type ContentStatusValue, type ContentTypeValue, type SocialPlatformValue } from '#shared/constants/content'
+import { CONTENT_BODY_MAX_LENGTH, contentCharLimit, SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORMS, type ContentStatusValue, type ContentTypeValue, type SocialPlatformValue } from '#shared/constants/content'
 import { contentCreateSchema, contentUpdateSchema } from '#shared/schemas/content'
 import { toFieldErrors } from '#shared/utils/validation'
 import type { ClientListItem, ContentDetail } from '~/types/api'
 
-const BODY_MAX_LENGTH = 20_000
+const BODY_MAX_LENGTH = CONTENT_BODY_MAX_LENGTH
 
 const props = withDefaults(defineProps<{
   open: boolean
@@ -44,7 +44,20 @@ const form = reactive({
   body: '',
 })
 
-const platformOptions = SOCIAL_PLATFORMS.map(value => ({ value, label: SOCIAL_PLATFORM_LABELS[value] }))
+const platformOptions = [
+  { value: '', label: 'Platform seçilmedi' },
+  ...SOCIAL_PLATFORMS.map(value => ({ value, label: SOCIAL_PLATFORM_LABELS[value] })),
+]
+
+// Character counter: the platform limit for social posts (same source as the preview),
+// otherwise the general body limit. Exceeding a platform limit only warns.
+const charLimit = computed(() => contentCharLimit(form.type === 'SOCIAL_POST' ? form.platform || null : null))
+const overCharLimit = computed(() => form.body.length > charLimit.value)
+const charHint = computed(() => {
+  const counter = `${formatNumber(form.body.length)} / ${formatNumber(charLimit.value)} karakter`
+  if (!overCharLimit.value || !form.platform) return counter
+  return `${counter} · ${SOCIAL_PLATFORM_LABELS[form.platform]} sınırı ${formatNumber(form.body.length - charLimit.value)} karakter aşıldı; kaydedebilirsiniz ama yayından önce kısaltın.`
+})
 
 /** "YYYY-MM-DD" in local time for a date input. */
 function toDateInputValue(value: string | null): string {
@@ -215,7 +228,7 @@ async function submit() {
       description="İçerikler bir müşteriye bağlı olarak oluşturulur. Müşteri ekledikten sonra içerik oluşturabilirsiniz."
     >
       <UiButton
-        to="/clients"
+        to="/musteriler"
         variant="secondary"
         @click="emit('close')"
       >
@@ -281,13 +294,12 @@ async function submit() {
           :error="errors.platform"
           optional
         >
-          <UiSelect
+          <UiListbox
             :id="field.id"
             v-model="form.platform"
-            :invalid="field.invalid"
+            label="Platform"
             :aria-describedby="field.describedBy"
             :options="platformOptions"
-            placeholder="Platform seçin"
           />
         </UiFormField>
         <UiFormField
@@ -297,10 +309,9 @@ async function submit() {
           optional
           :class="form.type !== 'SOCIAL_POST' && 'sm:col-span-2'"
         >
-          <UiInput
+          <UiDatePicker
             :id="field.id"
             v-model="form.scheduledAt"
-            type="date"
             :invalid="field.invalid"
             :aria-describedby="field.describedBy"
           />
@@ -321,7 +332,8 @@ async function submit() {
         v-slot="field"
         label="İçerik metni"
         :error="errors.body"
-        :hint="`${formatNumber(form.body.length)} / ${formatNumber(BODY_MAX_LENGTH)} karakter`"
+        :hint="charHint"
+        :hint-warning="overCharLimit"
         optional
       >
         <UiTextarea

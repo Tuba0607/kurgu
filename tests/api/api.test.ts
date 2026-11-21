@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { setup } from '@nuxt/test-utils/e2e'
+import { fetch, setup } from '@nuxt/test-utils/e2e'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   api,
@@ -32,6 +32,12 @@ afterAll(async () => {
 
   await testPrisma.$disconnect()
 })
+
+// The test server inherits these: the cron endpoint is configured, but demo resets
+// stay disabled (no ALLOW_DEMO_SEED), so the tests can never wipe the database.
+const CRON_TEST_SECRET = 'test-cron-secret-0123456789'
+process.env.CRON_SECRET = CRON_TEST_SECRET
+delete process.env.ALLOW_DEMO_SEED
 
 await setup({
   rootDir: fileURLToPath(new URL('../..', import.meta.url)),
@@ -667,5 +673,58 @@ describe('P1: status history, filters, metrics and deletion', () => {
     expect(status).toBe(200)
     expect(body).toEqual({ deletedContents: 2 })
     expect(await testPrisma.content.count({ where: { clientId: client.id } })).toBe(0)
+  })
+})
+
+describe('Longest waiting sort', () => {
+  it('lists only contents waiting for approval, longest waiting first, even without a status filter', async () => {
+    const all = await api('GET', '/api/contents?sort=waiting&pageSize=50')
+    const reviewCount = await testPrisma.content.count({ where: { status: 'IN_REVIEW' } })
+    expect(all.body.total).toBe(reviewCount)
+    expect(all.body.items.every((content: Json) => content.status === 'IN_REVIEW')).toBe(true)
+    const times = all.body.items.map((content: Json) => new Date(content.statusChangedAt).getTime())
+    expect(times).toEqual([...times].sort((a, b) => a - b))
+
+    // A conflicting status filter does not bring published contents back.
+    const published = await api('GET', '/api/contents?sort=waiting&status=PUBLISHED&pageSize=50')
+    expect(published.body.items.every((content: Json) => content.status === 'IN_REVIEW')).toBe(true)
+  })
+
+  it('puts a content that just went to review at the end', async () => {
+    const client = await createTestClient()
+    const content = await createTestContent(client.id, { status: 'IN_REVIEW' })
+    const { body } = await api('GET', '/api/contents?sort=waiting&pageSize=50')
+    expect(body.items.at(-1).id).toBe(content.id)
+  })
+})
+
+describe('Turkish routes', () => {
+  it.each([
+    ['/contents?status=IN_REVIEW&sort=waiting', '/icerikler?durum=onay&sirala=bekleyen'],
+    ['/clients/seed_client_lina_kozmetik', '/musteriler/seed_client_lina_kozmetik'],
+  ])('redirects %s permanently to %s', async (from, to) => {
+    const response = await fetch(from, { redirect: 'manual' })
+    expect(response.status).toBe(301)
+    expect(response.headers.get('location')).toBe(to)
+  })
+
+  it('serves the Turkish pages and keeps the API untouched', async () => {
+    expect((await fetch('/icerikler?durum=onay')).status).toBe(200)
+    expect((await fetch('/musteriler')).status).toBe(200)
+    expect((await api('GET', '/api/contents?status=IN_REVIEW')).status).toBe(200)
+  })
+})
+
+describe('Nightly demo reset (cron)', () => {
+  it('rejects requests without the cron secret', async () => {
+    expect((await fetch('/api/cron/reset-demo')).status).toBe(401)
+    expect((await fetch('/api/cron/reset-demo', { headers: { authorization: 'Bearer wrong' } })).status).toBe(401)
+  })
+
+  it('refuses to reset when the deployment does not allow demo data', async () => {
+    const response = await fetch('/api/cron/reset-demo', { headers: { authorization: `Bearer ${CRON_TEST_SECRET}` } })
+    expect(response.status).toBe(403)
+    // Nothing was deleted
+    expect(await testPrisma.client.count()).toBeGreaterThan(0)
   })
 })

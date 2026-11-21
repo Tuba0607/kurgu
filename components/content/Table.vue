@@ -3,15 +3,38 @@ import { Pencil } from 'lucide-vue-next'
 import type { ContentStatusValue } from '#shared/constants/content'
 import type { ContentListItem } from '~/types/api'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   items: ContentListItem[]
   showClient?: boolean
   /** Id of the content whose status is being saved (its menu is disabled). */
   pendingId?: string | null
+  /** What the date column shows; follows the list's sort order. */
+  dateColumn?: 'created' | 'scheduled' | 'waiting'
 }>(), {
   showClient: true,
   pendingId: null,
+  dateColumn: 'created',
 })
+
+const DATE_COLUMN_LABELS = {
+  created: 'Oluşturulma',
+  scheduled: 'Yayın / planlanan tarih',
+  waiting: 'Bekleme süresi',
+} as const
+
+/** Value of the date column for one content. */
+function dateCell(content: ContentListItem): { text: string, hint?: string } {
+  if (props.dateColumn === 'waiting') {
+    const days = daysSince(content.statusChangedAt)
+    return { text: days === 0 ? 'Bugün' : `${days} gün`, hint: formatDate(content.statusChangedAt) }
+  }
+  if (props.dateColumn === 'scheduled') {
+    if (content.publishedAt) return { text: formatDate(content.publishedAt), hint: 'Yayınlandı' }
+    if (content.scheduledAt) return { text: formatDate(content.scheduledAt), hint: 'Planlanan' }
+    return { text: 'Planlanmadı' }
+  }
+  return { text: formatDate(content.createdAt) }
+}
 
 defineEmits<{
   'edit': [id: string]
@@ -56,7 +79,7 @@ defineEmits<{
               scope="col"
               class="px-3 py-3 font-medium"
             >
-              Oluşturulma
+              {{ DATE_COLUMN_LABELS[dateColumn] }}
             </th>
             <th
               scope="col"
@@ -75,7 +98,7 @@ defineEmits<{
             <!-- Title takes the remaining width and truncates; other columns are bounded. -->
             <td class="w-full max-w-0 py-3.5 pl-5 pr-3">
               <NuxtLink
-                :to="`/contents/${content.id}`"
+                :to="`/icerikler/${content.id}`"
                 class="block truncate font-medium text-ink-900 hover:text-ink-700"
                 :title="content.title"
               >
@@ -91,7 +114,7 @@ defineEmits<{
               class="px-3 py-3.5"
             >
               <NuxtLink
-                :to="`/clients/${content.client.id}`"
+                :to="`/musteriler/${content.client.id}`"
                 class="block max-w-[11rem] truncate text-ink-600 hover:text-ink-700 hover:underline"
                 :title="content.client.name"
               >
@@ -110,7 +133,11 @@ defineEmits<{
               />
             </td>
             <td class="whitespace-nowrap px-3 py-3.5 tabular-nums text-ink-500">
-              {{ formatDate(content.createdAt) }}
+              <span :title="dateCell(content).hint">{{ dateCell(content).text }}</span>
+              <span
+                v-if="dateColumn === 'scheduled' && dateCell(content).hint"
+                class="block text-xs text-ink-500"
+              >{{ dateCell(content).hint }}</span>
             </td>
             <td class="py-3.5 pl-3 pr-5 text-right">
               <button
@@ -139,7 +166,7 @@ defineEmits<{
       >
         <div class="min-w-0 flex-1">
           <NuxtLink
-            :to="`/contents/${content.id}`"
+            :to="`/icerikler/${content.id}`"
             class="line-clamp-2 font-medium text-ink-900"
           >
             {{ content.title }}
@@ -148,16 +175,26 @@ defineEmits<{
             <template v-if="showClient">
               {{ content.client.name }} ·
             </template>
-            {{ formatDate(content.createdAt) }}
+            <template v-if="dateColumn === 'created'">
+              {{ formatDate(content.createdAt) }}
+            </template>
+            <template v-else>
+              {{ DATE_COLUMN_LABELS[dateColumn] }}: {{ dateCell(content).text }}
+            </template>
           </p>
-          <div class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <!-- Status and type always share one row; the type falls back to its icon when narrow -->
+          <div class="mt-2.5 flex min-w-0 flex-nowrap items-center gap-3">
             <ContentStatusMenu
               :status="content.status"
               :label="content.title"
               :disabled="pendingId === content.id"
               @change="$emit('status-change', content, $event)"
             />
-            <ContentTypeBadge :type="content.type" />
+            <ContentTypeBadge
+              :type="content.type"
+              short
+              class="min-w-0 [&>span]:truncate max-[359px]:[&>span]:sr-only"
+            />
           </div>
         </div>
         <button

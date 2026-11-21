@@ -28,11 +28,18 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
     compact
     @close="emit('cancel')"
   >
-    <slot />
+    <!-- Body only when extra content is passed: title + description sit in the header. -->
+    <template
+      v-if="$slots.default"
+      #default
+    >
+      <slot />
+    </template>
     <template #footer>
       <UiButton
         variant="secondary"
         :disabled="loading"
+        data-autofocus
         @click="emit('cancel')"
       >
         {{ cancelLabel }}

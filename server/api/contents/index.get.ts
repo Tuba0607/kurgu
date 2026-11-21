@@ -6,7 +6,7 @@ const ORDER_BY: Record<ContentSortValue, Prisma.ContentOrderByWithRelationInput[
   newest: newestFirst,
   // Contents without a planned date come last.
   scheduled: [{ scheduledAt: { sort: 'asc', nulls: 'last' } }, ...newestFirst],
-  // Longest in its current status first (with the "Onay bekliyor" tab: longest waiting).
+  // Longest waiting for approval first (the query is limited to IN_REVIEW below).
   waiting: [{ statusChangedAt: 'asc' }, { id: 'asc' }],
 }
 
@@ -23,7 +23,10 @@ export default defineEventHandler(async (event) => {
     ...(clientId && { clientId }),
     ...(search && { OR: buildTextSearchFilter('title', search) }),
   }
-  const where: Prisma.ContentWhereInput = { ...baseWhere, ...(status && { status }) }
+  // "En uzun süredir bekleyen" only makes sense for contents waiting for approval:
+  // this sort always lists IN_REVIEW contents, whatever status was requested.
+  const effectiveStatus = sort === 'waiting' ? 'IN_REVIEW' : status
+  const where: Prisma.ContentWhereInput = { ...baseWhere, ...(effectiveStatus && { status: effectiveStatus }) }
 
   // Count, page and tab counts are read in one transaction so they always match.
   const [total, items, groups] = await prisma.$transaction([

@@ -40,6 +40,17 @@ export const SOCIAL_PLATFORM_CHAR_LIMITS: Record<SocialPlatformValue, number> = 
   FACEBOOK: 63206,
 }
 
+/** Maximum length of a content body (also enforced by the API schema). */
+export const CONTENT_BODY_MAX_LENGTH = 20_000
+
+/**
+ * Limit shown by the character counters: the platform's limit for social posts,
+ * never more than what the app can store (Facebook: 63,206 -> 20,000).
+ */
+export function contentCharLimit(platform: SocialPlatformValue | null | undefined): number {
+  return platform ? Math.min(SOCIAL_PLATFORM_CHAR_LIMITS[platform], CONTENT_BODY_MAX_LENGTH) : CONTENT_BODY_MAX_LENGTH
+}
+
 /** Sort options of the content list. */
 export const CONTENT_SORTS = ['newest', 'scheduled', 'waiting'] as const
 export type ContentSortValue = (typeof CONTENT_SORTS)[number]

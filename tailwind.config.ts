@@ -62,12 +62,16 @@ export default {
           ink: '#A8402A', // coral text on light surfaces (6.0:1)
         },
         // Status colours, used identically for badges, chart segments and row stripes.
-        // DEFAULT: graphics (>= 3:1 on cards) · soft: badge background · ink: badge text (>= 6.7:1)
+        // DEFAULT: dots, chart segments, row stripes · soft: badge background · ink: badge text
+        // Badge text contrast: draft 7.6:1, review 6.6:1, published 5.6:1 (WCAG AA >= 4.5:1).
+        // Draft is a cool slate so it never reads as a warm tone next to amber.
         status: {
-          draft: { DEFAULT: '#8F877E', soft: '#EFEAE3', ink: '#4E4842' },
-          review: { DEFAULT: '#B8862F', soft: '#F6EBD2', ink: '#6B4A0E' },
-          published: { DEFAULT: '#4A8A68', soft: '#E0EEE5', ink: '#24563D' },
+          draft: { DEFAULT: '#8B93A7', soft: '#ECEEF4', ink: '#434A5C' },
+          review: { 'DEFAULT': '#E9A23B', 'soft': '#FDEFD3', 'ink': '#7A4A00', 'on-dark': '#F0B04F' },
+          published: { DEFAULT: '#2E9E6A', soft: '#DCF2E6', ink: '#146B42' },
         },
+        // Warning red for overdue dates; deliberately different from the coral CTA colour
+        danger: '#C8372D',
       },
       fontFamily: {
         sans: ['"DM Sans Variable"', ...defaultTheme.fontFamily.sans],

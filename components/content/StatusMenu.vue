@@ -94,7 +94,7 @@ onBeforeUnmount(() => {
     <button
       ref="trigger"
       type="button"
-      class="group/status inline-flex items-center gap-0.5 rounded-full disabled:cursor-wait disabled:opacity-60"
+      class="group/status inline-flex cursor-pointer items-center gap-0.5 rounded-full transition hover:brightness-95 disabled:cursor-wait disabled:opacity-60"
       aria-haspopup="menu"
       :aria-expanded="isOpen"
       :aria-controls="`${baseId}-menu`"

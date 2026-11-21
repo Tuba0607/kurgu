@@ -29,10 +29,12 @@ function requestClose() {
 const isOpen = toRef(props, 'open')
 useFocusTrap(panel, isOpen, {
   onEscape: requestClose,
-  // Prefer the first form control so users can start typing immediately.
-  getInitialFocus: () => body.value?.querySelector<HTMLElement>(
-    'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
-  ),
+  // An explicit [data-autofocus] wins (e.g. "Vazgeç" in confirmations); otherwise the
+  // first form control so users can start typing immediately.
+  getInitialFocus: () => panel.value?.querySelector<HTMLElement>('[data-autofocus]')
+    ?? body.value?.querySelector<HTMLElement>(
+      'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
+    ),
 })
 useScrollLock(isOpen)
 
@@ -97,7 +99,10 @@ onBeforeUnmount(() => toggleViewportTracking(false))
             compact ? 'max-h-[92%] rounded-t-card' : 'h-full max-h-full sm:h-auto',
           ]"
         >
-          <header class="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 sm:px-6">
+          <header
+            class="flex shrink-0 items-start justify-between gap-4 border-ink-100 px-5 py-4 sm:px-6"
+            :class="$slots.default && 'border-b'"
+          >
             <div class="min-w-0">
               <h2
                 :id="titleId"
@@ -128,6 +133,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
           </header>
 
           <div
+            v-if="$slots.default"
             ref="body"
             class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6"
           >
@@ -136,7 +142,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
 
           <footer
             v-if="$slots.footer"
-            class="flex shrink-0 flex-col-reverse gap-2 border-t border-ink-100 bg-ink-50/70 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:rounded-b-xl sm:px-6 sm:pb-4"
+            class="flex shrink-0 flex-col-reverse gap-2 border-t border-ink-100 bg-ink-50/70 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:rounded-b-card sm:px-6 sm:pb-4"
           >
             <slot name="footer" />
           </footer>

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CONTENT_SORTS, CONTENT_STATUSES, CONTENT_TYPES, SOCIAL_PLATFORMS } from '../constants/content'
+import { CONTENT_BODY_MAX_LENGTH, CONTENT_SORTS, CONTENT_STATUSES, CONTENT_TYPES, SOCIAL_PLATFORMS } from '../constants/content'
 import { emptyToNull, emptyToUndefined, ID_PATTERN, optionalText, requiredText, searchSchema } from './common'
 
 const contentTypeSchema = z.enum(CONTENT_TYPES, {
@@ -44,7 +44,7 @@ const scheduledAtSchema = z.preprocess(
 // partial update never silently resets it.
 const contentFields = {
   title: requiredText('Başlık', 2, 200),
-  body: optionalText('İçerik metni', 20_000),
+  body: optionalText('İçerik metni', CONTENT_BODY_MAX_LENGTH),
   type: contentTypeSchema,
   status: contentStatusSchema,
   clientId: clientIdSchema,

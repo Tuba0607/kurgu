@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Check, Copy, FilePlus2, FileText, Mail, Pencil, Phone, SearchX, Trash2 } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
+import { fromSlug, QUERY_KEYS, STATUS_SLUGS } from '#shared/constants/routes'
 import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
 import type { ClientDetail, ClientListItem, ContentListPage } from '~/types/api'
 import type { StatusFilterValue } from '~/utils/content-filters'
@@ -25,10 +26,10 @@ if (import.meta.server && isNotFound.value) {
 }
 
 // Status tabs, synced with the URL (?status=...). Defaults to "Tümü".
-const statusParam = useRouteQueryValue('status')
-const page = computed(() => parsePageParam(useRouteQueryValue('page').value))
+const statusParam = useRouteQueryValue(QUERY_KEYS.status)
+const page = computed(() => parsePageParam(useRouteQueryValue(QUERY_KEYS.page).value))
 const updateQuery = useQueryUpdater()
-const activeStatus = computed<StatusFilterValue>(() => (isContentStatus(statusParam.value) ? statusParam.value : ''))
+const activeStatus = computed<StatusFilterValue>(() => fromSlug(STATUS_SLUGS, statusParam.value))
 
 interface StatusTab {
   value: StatusFilterValue
@@ -63,16 +64,16 @@ const { data: listing, refresh: refreshContents } = await useFetch<ContentListPa
 // A page that no longer exists falls back to the last valid one.
 watch(listing, (value) => {
   if (import.meta.server || !value || value.page <= Math.max(value.totalPages, 1)) return
-  updateQuery({ page: value.totalPages > 1 ? String(value.totalPages) : null })
+  updateQuery({ [QUERY_KEYS.page]: value.totalPages > 1 ? String(value.totalPages) : null })
 }, { immediate: true })
 
 function selectStatus(value: StatusFilterValue) {
   // Changing the status filter always starts again from page 1.
-  if (value !== activeStatus.value) updateQuery({ status: value, page: null })
+  if (value !== activeStatus.value) updateQuery({ [QUERY_KEYS.status]: value ? STATUS_SLUGS[value] : null, [QUERY_KEYS.page]: null })
 }
 
 function goToPage(target: number) {
-  updateQuery({ page: target > 1 ? String(target) : null })
+  updateQuery({ [QUERY_KEYS.page]: target > 1 ? String(target) : null })
 }
 
 // WAI-ARIA tabs keyboard pattern: arrows / Home / End move and activate.
@@ -128,7 +129,7 @@ async function deleteClient() {
     const { deletedContents } = await $fetch<{ deletedContents: number }>(clientApiPath(client.value.id), { method: 'DELETE' })
     toast.success('Müşteri silindi', deletedContents > 0 ? `${client.value.name} ve ${deletedContents} içerik silindi.` : `${client.value.name} silindi.`)
     deleteOpen.value = false
-    await navigateTo('/clients')
+    await navigateTo('/musteriler')
   }
   catch (error) {
     toast.error('Müşteri silinemedi', getApiErrorMessage(error))
@@ -154,7 +155,7 @@ function openEdit(id: string) {
 // Refresh counts and the current page; a new content (newest first) is shown on page 1.
 function onContentSaved() {
   refresh()
-  if (!editingContentId.value && page.value > 1) updateQuery({ page: null })
+  if (!editingContentId.value && page.value > 1) updateQuery({ [QUERY_KEYS.page]: null })
   else refreshContents()
 }
 </script>
@@ -162,7 +163,7 @@ function onContentSaved() {
 <template>
   <div>
     <NuxtLink
-      to="/clients"
+      to="/musteriler"
       class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900"
     >
       <ArrowLeft
@@ -183,7 +184,7 @@ function onContentSaved() {
         description="Bu müşteri kaydı mevcut değil ya da adres hatalı."
       >
         <UiButton
-          to="/clients"
+          to="/musteriler"
           variant="secondary"
         >
           Müşteri listesine dön
@@ -428,7 +429,7 @@ function onContentSaved() {
                 :ref="el => { if (el) tabElements[index] = el as HTMLButtonElement }"
                 type="button"
                 role="tab"
-                class="flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 pb-3 text-[13px] transition-colors sm:gap-1.5 sm:text-sm focus-visible:ring-inset focus-visible:ring-offset-0"
+                class="flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 pb-3 text-[13px] transition-colors sm:gap-1.5 sm:text-sm rounded-md focus-visible:ring-offset-surface"
                 :class="activeStatus === tab.value
                   ? 'border-brand font-semibold text-ink-900'
                   : 'border-transparent font-medium text-ink-500 hover:text-ink-900'"

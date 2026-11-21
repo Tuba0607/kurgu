@@ -18,6 +18,6 @@ defineProps<{
       class="size-4 shrink-0 text-ink-400"
       aria-hidden="true"
     />
-    {{ short ? CONTENT_TYPE_SHORT_LABELS[type] : CONTENT_TYPE_LABELS[type] }}
+    <span>{{ short ? CONTENT_TYPE_SHORT_LABELS[type] : CONTENT_TYPE_LABELS[type] }}</span>
   </span>
 </template>

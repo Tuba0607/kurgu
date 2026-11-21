@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CONTENT_TYPE_LABELS, SOCIAL_PLATFORM_CHAR_LIMITS, SOCIAL_PLATFORM_LABELS } from '#shared/constants/content'
+import { CONTENT_TYPE_LABELS, contentCharLimit, SOCIAL_PLATFORM_LABELS } from '#shared/constants/content'
 import type { ContentDetail } from '~/types/api'
 
 /**
@@ -14,7 +14,7 @@ const paragraphs = computed(() => splitParagraphs(props.content.body))
 const date = computed(() => formatDate(props.content.publishedAt ?? props.content.createdAt))
 const characterCount = computed(() => (props.content.body ?? '').trim().length)
 // Platform limit (X 280, Instagram 2200, LinkedIn 3000...) for social posts.
-const charLimit = computed(() => (props.content.platform ? SOCIAL_PLATFORM_CHAR_LIMITS[props.content.platform] : null))
+const charLimit = computed(() => (props.content.platform ? contentCharLimit(props.content.platform) : null))
 const overLimit = computed(() => charLimit.value !== null && characterCount.value > charLimit.value)
 </script>
 
@@ -71,22 +71,25 @@ const overLimit = computed(() => charLimit.value !== null && characterCount.valu
     <!-- Blog post: article layout -->
     <article
       v-else-if="content.type === 'BLOG_POST'"
-      class="mx-auto max-w-prose"
+      class="mx-auto max-w-[680px] py-2"
     >
-      <p class="text-xs font-semibold uppercase tracking-wider text-brand">
-        {{ CONTENT_TYPE_LABELS[content.type] }}
+      <!-- Article layout: byline, title, reading time, comfortable measure -->
+      <p class="flex flex-wrap items-center gap-x-2 text-[13px] text-ink-500">
+        <span class="font-semibold text-ink-800">{{ content.client.name }}</span>
+        <span aria-hidden="true">·</span>
+        <time>{{ date }}</time>
       </p>
-      <h3 class="mt-2 break-words text-2xl font-semibold leading-tight tracking-tight text-ink-900 sm:text-[28px]">
+      <h3 class="mt-3 break-words font-serif text-[28px] font-semibold leading-[1.2] tracking-tight text-ink-900 [text-wrap:balance] sm:text-[32px]">
         {{ content.title }}
       </h3>
-      <p class="mt-3 text-[13px] text-ink-500">
-        {{ content.client.name }} · {{ date }} · {{ estimateReadingMinutes(content.body) }} dk okuma
+      <p class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-ink-100 px-2.5 py-1 text-xs font-medium text-ink-700">
+        {{ estimateReadingMinutes(content.body) }} dk okuma
       </p>
-      <div class="mt-6 space-y-4 border-t border-ink-100 pt-6">
+      <div class="mt-7 space-y-5 border-t border-ink-200 pt-7">
         <p
           v-for="(paragraph, index) in paragraphs"
           :key="index"
-          class="whitespace-pre-line break-words text-base leading-7 text-ink-700"
+          class="whitespace-pre-line break-words text-[17px] leading-[1.75] text-ink-800 first-of-type:first-letter:float-left first-of-type:first-letter:mr-2 first-of-type:first-letter:font-serif first-of-type:first-letter:text-[52px] first-of-type:first-letter:font-semibold first-of-type:first-letter:leading-[0.9] first-of-type:first-letter:text-brand-ink"
         >
           {{ paragraph }}
         </p>

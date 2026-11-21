@@ -66,7 +66,7 @@ defineProps<{ items: ClientListItem[] }>()
                 <div class="min-w-0">
                   <!-- The link covers the whole row (see ::after) for a large click target. -->
                   <NuxtLink
-                    :to="`/clients/${client.id}`"
+                    :to="`/musteriler/${client.id}`"
                     class="block truncate font-medium text-ink-900 after:absolute after:inset-0 group-hover:text-ink-700"
                     :title="client.name"
                   >
@@ -122,7 +122,7 @@ defineProps<{ items: ClientListItem[] }>()
         :key="client.id"
       >
         <NuxtLink
-          :to="`/clients/${client.id}`"
+          :to="`/musteriler/${client.id}`"
           class="flex items-center gap-3 px-4 py-4 active:bg-ink-50"
         >
           <span

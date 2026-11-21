@@ -62,7 +62,7 @@ async function deleteContent() {
     await $fetch(contentApiPath(content.value.id), { method: 'DELETE' })
     toast.success('İçerik silindi', `“${content.value.title}” kalıcı olarak silindi.`)
     deleteOpen.value = false
-    await router.push('/contents')
+    await router.push('/icerikler')
   }
   catch (error) {
     toast.error('İçerik silinemedi', getApiErrorMessage(error))
@@ -106,7 +106,7 @@ function onSaved(updated: ContentDetail) {
 <template>
   <div>
     <NuxtLink
-      to="/contents"
+      to="/icerikler"
       class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900"
     >
       <ArrowLeft
@@ -127,7 +127,7 @@ function onSaved(updated: ContentDetail) {
         description="Bu içerik kaydı mevcut değil ya da adres hatalı."
       >
         <UiButton
-          to="/contents"
+          to="/icerikler"
           variant="secondary"
         >
           İçerik listesine dön
@@ -178,7 +178,10 @@ function onSaved(updated: ContentDetail) {
     </div>
 
     <template v-else>
-      <UiPageHeader :title="content.title">
+      <UiPageHeader
+        :title="content.title"
+        compact
+      >
         <template #eyebrow>
           <div class="mb-3 flex flex-wrap items-center gap-3">
             <ContentStatusBadge :status="content.status" />
@@ -224,11 +227,13 @@ function onSaved(updated: ContentDetail) {
         </template>
       </UiPageHeader>
 
-      <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
+      <!-- Phones/tablets: one column in task order (status, text, details, history) via
+           `contents` wrappers + order; desktop: text + history left, status + details right. -->
+      <div class="flex flex-col gap-6 xl:grid xl:grid-cols-3 xl:items-start">
+        <div class="contents xl:col-span-2 xl:block xl:space-y-6">
           <!-- Body -->
           <section
-            class="card p-5 sm:p-6"
+            class="card order-2 p-5 sm:p-6 xl:order-none"
             aria-labelledby="content-body-title"
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -298,7 +303,7 @@ function onSaved(updated: ContentDetail) {
 
           <!-- Status history -->
           <section
-            class="card p-5 sm:p-6"
+            class="card order-4 p-5 sm:p-6 xl:order-none"
             aria-labelledby="content-history-title"
           >
             <h2
@@ -311,10 +316,10 @@ function onSaved(updated: ContentDetail) {
           </section>
         </div>
 
-        <div class="space-y-6">
+        <div class="contents xl:block xl:space-y-6">
           <!-- Status -->
           <section
-            class="card p-5"
+            class="card order-1 p-5 xl:order-none"
             aria-labelledby="content-status-title"
           >
             <h2
@@ -339,7 +344,7 @@ function onSaved(updated: ContentDetail) {
 
           <!-- Details -->
           <section
-            class="card p-5"
+            class="card order-3 p-5 xl:order-none"
             aria-labelledby="content-details-title"
           >
             <h2
@@ -355,7 +360,7 @@ function onSaved(updated: ContentDetail) {
                 </dt>
                 <dd class="text-right">
                   <NuxtLink
-                    :to="`/clients/${content.client.id}`"
+                    :to="`/musteriler/${content.client.id}`"
                     class="font-medium text-ink-600 hover:text-ink-800"
                   >
                     {{ content.client.name }}

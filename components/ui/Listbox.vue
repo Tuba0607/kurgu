@@ -13,6 +13,14 @@ interface ListboxOption {
   label: string
 }
 
+// Layout classes stay on the wrapper; ids and ARIA attributes go to the focusable trigger.
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const triggerAttrs = computed(() => {
+  const { class: _class, ...rest } = attrs
+  return rest
+})
+
 const model = defineModel<string>({ required: true })
 
 const props = withDefaults(defineProps<{
@@ -202,8 +210,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div>
+  <div :class="attrs.class">
     <div
+      v-bind="triggerAttrs"
       ref="trigger"
       role="combobox"
       tabindex="0"
@@ -235,7 +244,7 @@ onBeforeUnmount(() => {
         role="listbox"
         :aria-label="label"
         tabindex="-1"
-        class="fixed z-30 overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
+        class="fixed z-[70] overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
         :style="listStyle"
         :data-placement="placement"
         @mousedown.prevent

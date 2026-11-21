@@ -29,3 +29,14 @@ describe('shared content constants', () => {
     })
   })
 })
+
+describe('contentCharLimit', () => {
+  it('uses the platform limit, capped at the stored maximum', async () => {
+    const { contentCharLimit } = await import('../../shared/constants/content')
+    expect(contentCharLimit('X')).toBe(280)
+    expect(contentCharLimit('INSTAGRAM')).toBe(2200)
+    expect(contentCharLimit('LINKEDIN')).toBe(3000)
+    expect(contentCharLimit('FACEBOOK')).toBe(20_000)
+    expect(contentCharLimit(null)).toBe(20_000)
+  })
+})
