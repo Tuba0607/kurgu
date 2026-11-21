@@ -315,6 +315,7 @@ async function submit() {
           <UiDatePicker
             :id="field.id"
             v-model="form.scheduledAt"
+            :warn-past="form.status !== 'PUBLISHED'"
             :invalid="field.invalid"
             :aria-describedby="field.describedBy"
           />

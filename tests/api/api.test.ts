@@ -648,6 +648,19 @@ describe('P1: status history, filters, metrics and deletion', () => {
     expect(body.addedLastWeek).toEqual(expect.any(Number))
   })
 
+  it('counts only unpublished contents as overdue', async () => {
+    const before = (await api('GET', '/api/dashboard')).body.schedule.overdue
+    const client = await createTestClient()
+    const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    // Already published with a past planned date: not overdue.
+    await createTestContent(client.id, { status: 'PUBLISHED', scheduledAt: lastWeek })
+    expect((await api('GET', '/api/dashboard')).body.schedule.overdue).toBe(before)
+    // Still a draft / waiting for approval with a past planned date: overdue.
+    await createTestContent(client.id, { status: 'DRAFT', scheduledAt: lastWeek })
+    await createTestContent(client.id, { status: 'IN_REVIEW', scheduledAt: lastWeek })
+    expect((await api('GET', '/api/dashboard')).body.schedule.overdue).toBe(before + 2)
+  })
+
   it('lists industries and client status counts', async () => {
     const industries = await api('GET', '/api/industries')
     expect(industries.body).toEqual([...industries.body].sort((a: string, b: string) => a.localeCompare(b, 'tr-TR')))

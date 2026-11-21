@@ -14,9 +14,16 @@ defineOptions({ inheritAttrs: false })
 
 const model = defineModel<string>({ required: true })
 
-defineProps<{
+const props = withDefaults(defineProps<{
   invalid?: boolean
-}>()
+  /**
+   * Show the "Bu tarih geçmişte kaldı" note for a past date. Off when a past date is
+   * expected, e.g. for content that is already published.
+   */
+  warnPast?: boolean
+}>(), {
+  warnPast: true,
+})
 
 const baseId = useId()
 const dialogId = `${baseId}-calendar`
@@ -47,7 +54,7 @@ watch(model, (value) => {
 const todayIso = toIsoDate(new Date())
 const focusedIso = ref(model.value || todayIso)
 // ISO strings compare in date order.
-const isPastValue = computed(() => !!model.value && model.value < todayIso)
+const isPastValue = computed(() => props.warnPast && !!model.value && model.value < todayIso)
 const describedBy = computed(() => [attrs['aria-describedby'], isPastValue.value && pastNoteId].filter(Boolean).join(' ') || undefined)
 const view = computed(() => {
   const date = fromIsoDate(focusedIso.value) ?? new Date()
@@ -157,49 +164,53 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
     ref="field"
     class="relative"
   >
-    <input
-      ref="input"
-      v-bind="$attrs"
-      :value="text"
-      type="text"
-      inputmode="numeric"
-      autocomplete="off"
-      placeholder="gg.aa.yyyy"
-      maxlength="10"
-      :aria-invalid="invalid || undefined"
-      :aria-describedby="describedBy"
-      class="field-control h-10 pl-3 tabular-nums"
-      :class="model ? 'pr-[4.5rem]' : 'pr-10'"
-      @input="onTextInput"
-      @blur="onTextBlur"
-      @keydown.down.prevent="open"
-    >
-    <button
-      v-if="model"
-      type="button"
-      class="absolute right-9 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
-      aria-label="Tarihi temizle"
-      @click="clearFromField"
-    >
-      <X
-        class="size-4"
-        aria-hidden="true"
-      />
-    </button>
-    <button
-      type="button"
-      class="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
-      :aria-label="isOpen ? 'Takvimi kapat' : 'Takvimden tarih seç'"
-      aria-haspopup="dialog"
-      :aria-expanded="isOpen"
-      :aria-controls="dialogId"
-      @click="isOpen ? close() : open()"
-    >
-      <CalendarDays
-        class="size-4"
-        aria-hidden="true"
-      />
-    </button>
+    <!-- Input and its buttons have their own box, so the buttons stay vertically centred
+         in the input even while the past-date note is shown below it. -->
+    <div class="relative">
+      <input
+        ref="input"
+        v-bind="$attrs"
+        :value="text"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="gg.aa.yyyy"
+        maxlength="10"
+        :aria-invalid="invalid || undefined"
+        :aria-describedby="describedBy"
+        class="field-control h-10 pl-3 tabular-nums"
+        :class="model ? 'pr-[4.5rem]' : 'pr-10'"
+        @input="onTextInput"
+        @blur="onTextBlur"
+        @keydown.down.prevent="open"
+      >
+      <button
+        v-if="model"
+        type="button"
+        class="absolute right-9 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
+        aria-label="Tarihi temizle"
+        @click="clearFromField"
+      >
+        <X
+          class="size-4"
+          aria-hidden="true"
+        />
+      </button>
+      <button
+        type="button"
+        class="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-100 active:bg-ink-100 hover:text-ink-900"
+        :aria-label="isOpen ? 'Takvimi kapat' : 'Takvimden tarih seç'"
+        aria-haspopup="dialog"
+        :aria-expanded="isOpen"
+        :aria-controls="dialogId"
+        @click="isOpen ? close() : open()"
+      >
+        <CalendarDays
+          class="size-4"
+          aria-hidden="true"
+        />
+      </button>
+    </div>
 
     <Teleport to="body">
       <div
