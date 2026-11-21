@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysSince, formatRelativeDate } from '../../utils/format'
+import { daysSince, formatRelativeDate, formatShortDate } from '../../utils/format'
 
 describe('relative dates (tr-TR)', () => {
   const now = new Date('2026-11-21T12:00:00')
@@ -16,5 +16,26 @@ describe('relative dates (tr-TR)', () => {
 
   it('counts whole calendar days since a date', () => {
     expect(daysSince('2026-11-14T23:59:00', now)).toBe(7)
+  })
+})
+
+describe('formatShortDate (tr-TR, Europe/Istanbul)', () => {
+  const now = new Date('2026-11-21T12:00:00Z')
+
+  it('drops the year within the current year', () => {
+    expect(formatShortDate('2026-10-17T09:00:00Z', now)).toBe('17 Eki')
+  })
+
+  it('keeps the year for other years', () => {
+    expect(formatShortDate('2025-10-17T09:00:00Z', now)).toBe('17 Eki 2025')
+  })
+
+  it('uses Istanbul time at the year boundary', () => {
+    // 31 Dec 2025 22:30 UTC is already 1 Jan 2026 in Istanbul.
+    expect(formatShortDate('2025-12-31T22:30:00Z', now)).toBe('1 Oca')
+  })
+
+  it('returns the empty value for missing dates', () => {
+    expect(formatShortDate(null, now)).toBe('—')
   })
 })

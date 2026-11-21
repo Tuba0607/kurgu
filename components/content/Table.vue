@@ -22,6 +22,12 @@ const DATE_COLUMN_LABELS = {
   waiting: 'Bekleme süresi',
 } as const
 
+/** Shorter labels for the one-line mobile meta row (type and date must always fit). */
+const MOBILE_DATE_LABELS = {
+  scheduled: 'Yayın',
+  waiting: 'Bekliyor',
+} as const
+
 /** Value of the date column for one content. */
 function dateCell(content: ContentListItem): { text: string, hint?: string } {
   if (props.dateColumn === 'waiting') {
@@ -34,6 +40,15 @@ function dateCell(content: ContentListItem): { text: string, hint?: string } {
     return { text: 'Planlanmadı' }
   }
   return { text: formatDate(content.createdAt) }
+}
+
+/** Mobile meta row: the publish date drops the current year so the client name keeps some room. */
+function mobileDateText(content: ContentListItem): string {
+  if (props.dateColumn === 'scheduled') {
+    const date = content.publishedAt ?? content.scheduledAt
+    if (date) return formatShortDate(date)
+  }
+  return dateCell(content).text
 }
 
 defineEmits<{
@@ -162,44 +177,59 @@ defineEmits<{
       <li
         v-for="content in items"
         :key="content.id"
-        class="flex items-start gap-3 px-4 py-4"
+        class="relative px-4 py-4"
       >
-        <div class="min-w-0 flex-1">
+        <!-- Edit button sits in the title's top-right corner, so the meta row below gets the full card width -->
+        <div class="min-w-0">
           <NuxtLink
             :to="`/icerikler/${content.id}`"
-            class="line-clamp-2 font-medium text-ink-900"
+            class="line-clamp-2 pr-10 font-medium text-ink-900"
           >
             {{ content.title }}
           </NuxtLink>
-          <p class="mt-1 truncate text-sm text-ink-500">
+          <!-- Meta line: type first so it always starts at the same x; only the client name shrinks ("…") -->
+          <p class="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm text-ink-500">
+            <ContentTypeBadge
+              :type="content.type"
+              short
+              class="shrink-0 !text-ink-500"
+            />
             <template v-if="showClient">
-              {{ content.client.name }} ·
+              <span
+                class="shrink-0"
+                aria-hidden="true"
+              >·</span>
+              <span
+                class="min-w-0 truncate"
+                :title="content.client.name"
+              >{{ content.client.name }}</span>
             </template>
-            <template v-if="dateColumn === 'created'">
-              {{ formatDate(content.createdAt) }}
-            </template>
-            <template v-else>
-              {{ DATE_COLUMN_LABELS[dateColumn] }}: {{ dateCell(content).text }}
-            </template>
+            <span
+              class="shrink-0"
+              aria-hidden="true"
+            >·</span>
+            <span class="shrink-0">
+              <template v-if="dateColumn === 'created'">
+                {{ formatDate(content.createdAt) }}
+              </template>
+              <template v-else>
+                {{ MOBILE_DATE_LABELS[dateColumn] }}: {{ mobileDateText(content) }}
+              </template>
+            </span>
           </p>
-          <!-- Status and type always share one row; the type falls back to its icon when narrow -->
-          <div class="mt-2.5 flex min-w-0 flex-nowrap items-center gap-3">
+          <!-- Status badge alone on its own row -->
+          <div class="mt-2.5 flex">
             <ContentStatusMenu
               :status="content.status"
               :label="content.title"
               :disabled="pendingId === content.id"
               @change="$emit('status-change', content, $event)"
             />
-            <ContentTypeBadge
-              :type="content.type"
-              short
-              class="min-w-0 [&>span]:truncate max-[359px]:[&>span]:sr-only"
-            />
           </div>
         </div>
         <button
           type="button"
-          class="-mr-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
+          class="absolute right-3 top-3 flex size-9 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
           :aria-label="`${content.title} içeriğini düzenle`"
           @click="$emit('edit', content.id)"
         >

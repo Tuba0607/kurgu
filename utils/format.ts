@@ -10,6 +10,14 @@ const dateFormatter = new Intl.DateTimeFormat(LOCALE, {
   timeZone: TIME_ZONE,
 })
 
+const dayMonthFormatter = new Intl.DateTimeFormat(LOCALE, {
+  day: 'numeric',
+  month: 'short',
+  timeZone: TIME_ZONE,
+})
+
+const yearFormatter = new Intl.DateTimeFormat(LOCALE, { year: 'numeric', timeZone: TIME_ZONE })
+
 const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
   day: 'numeric',
   month: 'long',
@@ -25,6 +33,13 @@ export const EMPTY_VALUE = '—'
 
 export function formatDate(value: string | Date | null | undefined): string {
   return value ? dateFormatter.format(new Date(value)) : EMPTY_VALUE
+}
+
+/** Like formatDate, but without the year when it is the current year ("17 Eki"). For tight one-line rows. */
+export function formatShortDate(value: string | Date | null | undefined, now: Date = new Date()): string {
+  if (!value) return EMPTY_VALUE
+  const date = new Date(value)
+  return yearFormatter.format(date) === yearFormatter.format(now) ? dayMonthFormatter.format(date) : dateFormatter.format(date)
 }
 
 export function formatDateTime(value: string | Date | null | undefined): string {
