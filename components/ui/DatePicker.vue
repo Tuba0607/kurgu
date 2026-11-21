@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { CalendarDays, ChevronLeft, ChevronRight, Info } from 'lucide-vue-next'
+import { CalendarDays, ChevronLeft, ChevronRight, Info, X } from 'lucide-vue-next'
 
 /**
  * Turkish date picker: type "gg.aa.yyyy" or pick from a calendar (Turkish month
- * and day names, week starts on Monday, quick picks, "Bugün" and "Temizle"). The
- * value is "YYYY-MM-DD" or '' (empty). Keyboard: arrows move by day / week, PageUp /
- * PageDown by month, Enter selects, Escape closes.
+ * and day names, week starts on Monday; today is outlined, the selected day filled).
+ * The value is "YYYY-MM-DD" or '' (empty); a × button in the field clears it.
+ * Keyboard: arrows move by day / week, PageUp / PageDown by month, Enter selects,
+ * Escape closes.
  * Past days stay selectable but look faded; a past value shows an info note
  * under the field (not an error: e.g. recording a date that already happened).
  */
@@ -24,10 +25,12 @@ const input = ref<HTMLInputElement | null>(null)
 const popover = ref<HTMLElement | null>(null)
 const isOpen = ref(false)
 const text = ref(isoToDisplay(model.value))
-// Opens upwards when the whole calendar does not fit below (in a modal: above the footer).
+// Opens upwards when the whole calendar does not fit below (in a modal: above the footer),
+// 8px from the input and always fully inside the viewport.
 // Anchored to the input (not the wrapper, which also holds the past-date note).
 const { style: floatingStyle, update: updatePosition } = useFloating(input, isOpen, {
-  maxHeight: 460,
+  gap: 8,
+  maxHeight: 360,
   matchWidth: false,
   avoidClipping: true,
   floating: popover,
@@ -43,7 +46,6 @@ watch(model, (value) => {
 // Month shown in the calendar and the keyboard-focused day
 const todayIso = toIsoDate(new Date())
 const focusedIso = ref(model.value || todayIso)
-const quickOptions = quickDateOptions(todayIso)
 // ISO strings compare in date order.
 const isPastValue = computed(() => !!model.value && model.value < todayIso)
 const describedBy = computed(() => [attrs['aria-describedby'], isPastValue.value && pastNoteId].filter(Boolean).join(' ') || undefined)
@@ -101,10 +103,12 @@ function select(iso: string) {
   close()
 }
 
-function clear() {
+/** × in the field: empties it and keeps the focus in the input. */
+function clearFromField() {
   model.value = ''
   text.value = ''
-  close()
+  isOpen.value = false
+  input.value?.focus()
 }
 
 function moveFocus(days: number, months = 0) {
@@ -164,11 +168,24 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
       maxlength="10"
       :aria-invalid="invalid || undefined"
       :aria-describedby="describedBy"
-      class="field-control h-10 pl-3 pr-10 tabular-nums"
+      class="field-control h-10 pl-3 tabular-nums"
+      :class="model ? 'pr-[4.5rem]' : 'pr-10'"
       @input="onTextInput"
       @blur="onTextBlur"
       @keydown.down.prevent="open"
     >
+    <button
+      v-if="model"
+      type="button"
+      class="absolute right-9 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-900"
+      aria-label="Tarihi temizle"
+      @click="clearFromField"
+    >
+      <X
+        class="size-4"
+        aria-hidden="true"
+      />
+    </button>
     <button
       type="button"
       class="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-100 hover:text-ink-900"
@@ -195,20 +212,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
         :style="floatingStyle"
         @keydown="onPopoverKeydown"
       >
-        <div class="mb-2 flex gap-1 border-b border-ink-100 pb-2.5">
-          <button
-            v-for="option in quickOptions"
-            :key="option.label"
-            type="button"
-            class="whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium transition-colors"
-            :class="option.iso === model ? 'bg-primary text-primary-ink' : 'bg-ink-100 text-ink-700 hover:bg-ink-200 hover:text-ink-900'"
-            :aria-label="`${option.label}: ${isoToDisplay(option.iso)}`"
-            @click="select(option.iso)"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-
         <div class="mb-2 flex items-center justify-between">
           <button
             type="button"
@@ -271,23 +274,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
             @click="select(day.iso)"
           >
             {{ day.day }}
-          </button>
-        </div>
-
-        <div class="mt-3 flex justify-between border-t border-ink-100 pt-3">
-          <button
-            type="button"
-            class="rounded-full px-3 py-1.5 text-sm font-medium text-ink-600 hover:bg-ink-100 hover:text-ink-900"
-            @click="clear"
-          >
-            Temizle
-          </button>
-          <button
-            type="button"
-            class="rounded-full bg-ink-100 px-3 py-1.5 text-sm font-semibold text-ink-900 hover:bg-ink-200"
-            @click="select(todayIso)"
-          >
-            Bugün
           </button>
         </div>
       </div>

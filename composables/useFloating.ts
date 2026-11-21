@@ -44,9 +44,11 @@ export function useFloating(anchor: Ref<HTMLElement | null>, open: Ref<boolean>,
       placement.value = below >= Math.min(maxHeight, 200) || below >= above ? 'bottom' : 'top'
     }
     const available = placement.value === 'bottom' ? below : above
+    // Keep the whole layer inside the viewport horizontally too.
+    const layerWidth = matchWidth ? rect.width : (floating?.value?.offsetWidth ?? 0)
     style.value = {
       position: 'fixed',
-      left: `${Math.max(margin, Math.min(rect.left, window.innerWidth - margin - (matchWidth ? rect.width : 0)))}px`,
+      left: `${Math.max(margin, Math.min(rect.left, window.innerWidth - margin - layerWidth))}px`,
       ...(matchWidth && { width: `${rect.width}px` }),
       maxHeight: `${Math.max(120, Math.min(maxHeight, available))}px`,
       ...(placement.value === 'bottom'
