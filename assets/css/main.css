@@ -70,3 +70,42 @@
     @apply ring-rose-300 focus:ring-rose-500;
   }
 }
+
+/*
+ * ScrollRow edge fades. The mask's edge alpha is driven by two registered
+ * <number> properties (0 = hidden, 1 = shown) so the fade can transition;
+ * a plain mask-image gradient change would just jump.
+ */
+@property --scroll-fade-start {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --scroll-fade-end {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.scroll-row-fade {
+  --scroll-fade-mask: linear-gradient(
+    to right,
+    rgb(0 0 0 / calc(1 - var(--scroll-fade-start))) 0,
+    #000 28px,
+    #000 calc(100% - 28px),
+    rgb(0 0 0 / calc(1 - var(--scroll-fade-end))) 100%
+  );
+
+  -webkit-mask-image: var(--scroll-fade-mask);
+  mask-image: var(--scroll-fade-mask);
+  transition:
+    --scroll-fade-start 150ms ease-out,
+    --scroll-fade-end 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-row-fade {
+    transition: none;
+  }
+}

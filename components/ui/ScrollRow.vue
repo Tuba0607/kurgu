@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * Horizontally scrollable row (tabs on small screens):
- * - soft fade on the edge(s) that still have content to scroll to,
+ * - soft fade on an edge only while there is content to scroll to in that direction
+ *   (fades in/out via registered custom properties, see main.css),
  * - scroll-snap so items are never cut in half when scrolling stops,
  * - keeps the active item ([aria-pressed="true"] / [aria-selected="true"]) in view.
  */
@@ -17,8 +18,14 @@ const fadeEnd = ref(false)
 function updateFades() {
   const el = scroller.value
   if (!el) return
-  fadeStart.value = el.scrollLeft > 2
-  fadeEnd.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
+  // scrollLeft can be fractional on high-DPI screens; scrollWidth is rounded.
+  fadeStart.value = el.scrollLeft > 0.5
+  fadeEnd.value = Math.ceil(el.scrollLeft) + el.clientWidth < el.scrollWidth
+}
+
+/** Inline padding of the row (room for focus rings); items snap to it, not to the outer edge. */
+function paddingStart(el: HTMLElement) {
+  return Number.parseFloat(getComputedStyle(el).paddingLeft) || 0
 }
 
 async function revealActive(smooth = true) {
@@ -27,7 +34,7 @@ async function revealActive(smooth = true) {
   const active = el?.querySelector<HTMLElement>('[aria-pressed="true"], [aria-selected="true"]')
   if (!el || !active) return updateFades()
   const items = [...el.querySelectorAll<HTMLElement>(':scope > [data-scroll-item]')]
-  const start = (item: HTMLElement) => item.offsetLeft - el.offsetLeft - 4
+  const start = (item: HTMLElement) => item.offsetLeft - el.offsetLeft - paddingStart(el)
   const activeRight = active.offsetLeft - el.offsetLeft + active.offsetWidth
   const fullyVisible = start(active) >= el.scrollLeft && activeRight <= el.scrollLeft + el.clientWidth
   if (!fullyVisible) {
@@ -43,24 +50,30 @@ watch(() => props.activeKey, () => revealActive())
 
 let resizeObserver: ResizeObserver | undefined
 onMounted(() => {
+  // Without this, snapping aligns the first item to the outer edge and the row
+  // starts scrolled by the padding width, which would show the start fade.
+  if (scroller.value) scroller.value.style.scrollPaddingInline = `${paddingStart(scroller.value)}px`
   revealActive(false)
+  // Row size (viewport resize) and item sizes (e.g. tab counts changing) both affect scrollWidth.
   resizeObserver = new ResizeObserver(updateFades)
-  if (scroller.value) resizeObserver.observe(scroller.value)
+  if (scroller.value) {
+    resizeObserver.observe(scroller.value)
+    for (const item of scroller.value.children) resizeObserver.observe(item)
+  }
 })
 onBeforeUnmount(() => resizeObserver?.disconnect())
 
-const maskImage = computed(() => {
-  const start = fadeStart.value ? 'transparent 0, #000 28px' : '#000 0'
-  const end = fadeEnd.value ? '#000 calc(100% - 28px), transparent 100%' : '#000 100%'
-  return `linear-gradient(to right, ${start}, ${end})`
-})
+const fadeStyle = computed(() => ({
+  '--scroll-fade-start': fadeStart.value ? 1 : 0,
+  '--scroll-fade-end': fadeEnd.value ? 1 : 0,
+}))
 </script>
 
 <template>
   <div
     ref="scroller"
-    class="flex snap-x snap-proximity overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[data-scroll-item]]:snap-start"
-    :style="{ maskImage, WebkitMaskImage: maskImage }"
+    class="scroll-row-fade flex snap-x snap-proximity overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[data-scroll-item]]:snap-start"
+    :style="fadeStyle"
     @scroll.passive="updateFades"
   >
     <slot />
