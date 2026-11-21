@@ -123,10 +123,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
 <template>
   <div
     ref="root"
-    class="relative flex flex-col items-center gap-5 sm:flex-row sm:gap-7"
+    class="relative flex flex-col items-center gap-5"
     @keydown.esc="deactivate"
   >
-    <div class="relative size-36 shrink-0">
+    <div class="relative size-40 shrink-0">
       <svg
         ref="chart"
         :viewBox="`0 0 ${VIEWBOX} ${VIEWBOX}`"
@@ -163,7 +163,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
 
       <!-- Centre label -->
       <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span class="text-3xl font-semibold leading-none tabular-nums tracking-tight text-ink-900">{{ formatNumber(total) }}</span>
+        <span class="font-display text-[34px] font-semibold leading-none tabular-nums tracking-[-0.04em] text-ink-900">{{ formatNumber(total) }}</span>
         <span class="mt-1 text-xs text-ink-500">içerik</span>
       </div>
     </div>
@@ -200,11 +200,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
             :class="CONTENT_STATUS_STYLES[item.status].dot"
             aria-hidden="true"
           />
-          <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+          <span class="min-w-0 flex-1 whitespace-nowrap">{{ item.label }}</span>
           <span class="font-semibold tabular-nums text-ink-900">{{ formatNumber(counts[item.status]) }}</span>
           <span class="w-10 text-right text-[13px] tabular-nums text-ink-500">{{ formatPercent(counts[item.status], total) }}</span>
           <ChevronRight
-            class="-mr-1 size-4 shrink-0 text-ink-300 transition group-hover:translate-x-0.5 group-hover:text-ink-600"
+            class="-mr-1 size-4 shrink-0 text-ink-300 opacity-0 transition group-hover:translate-x-0.5 group-hover:text-ink-600 group-hover:opacity-100 group-focus-visible:opacity-100"
             aria-hidden="true"
           />
         </NuxtLink>

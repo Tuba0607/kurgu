@@ -1,4 +1,7 @@
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/dm-sans';
+/* Unbounded: only the weights used by page titles and KPI numbers (incl. Turkish latin-ext glyphs) */
+@import '@fontsource/unbounded/latin-600.css';
+@import '@fontsource/unbounded/latin-ext-600.css';
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +10,6 @@
 @layer base {
   html {
     @apply bg-canvas text-ink-900 antialiased;
-    font-feature-settings: 'cv11', 'ss01';
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -38,7 +40,17 @@
 
 @layer components {
   .card {
-    @apply rounded-xl border border-ink-200 bg-white shadow-card;
+    @apply rounded-card border border-ink-200 bg-surface;
+  }
+
+  /* Small, letter-spaced upper-case section labels ("ONAY BEKLEYEN İÇERİKLER") */
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-ink-500;
+  }
+
+  /* Display face for page titles and KPI numbers */
+  .display-title {
+    @apply font-display font-semibold tracking-[-0.02em];
   }
 
   .field-control {

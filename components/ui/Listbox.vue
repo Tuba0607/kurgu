@@ -212,7 +212,7 @@ onBeforeUnmount(() => {
       :aria-expanded="isOpen"
       :aria-controls="listboxId"
       :aria-activedescendant="isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined"
-      class="flex h-10 w-full cursor-pointer select-none items-center justify-between gap-2 rounded-lg bg-white pl-3 pr-2.5 text-sm text-ink-900 shadow-sm ring-1 ring-inset transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-0"
+      class="flex h-10 w-full cursor-pointer select-none items-center justify-between gap-2 rounded-lg bg-surface pl-3 pr-2.5 text-sm text-ink-900 shadow-sm ring-1 ring-inset transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-0"
       :class="isOpen ? 'ring-ink-500' : 'ring-ink-300 hover:ring-ink-400'"
       @click="isOpen ? close() : open()"
       @keydown="onKeydown"
@@ -235,7 +235,7 @@ onBeforeUnmount(() => {
         role="listbox"
         :aria-label="label"
         tabindex="-1"
-        class="fixed z-30 overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-white p-1 shadow-popover"
+        class="fixed z-30 overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
         :style="listStyle"
         :data-placement="placement"
         @mousedown.prevent

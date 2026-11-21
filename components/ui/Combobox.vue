@@ -140,7 +140,7 @@ watch(activeIndex, async (index) => {
       v-show="showList"
       :id="listboxId"
       role="listbox"
-      class="absolute inset-x-0 top-full z-20 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-ink-200 bg-white p-1 shadow-popover"
+      class="absolute inset-x-0 top-full z-20 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
     >
       <li
         v-for="(option, index) in options"

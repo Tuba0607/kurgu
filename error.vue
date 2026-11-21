@@ -29,10 +29,10 @@ function goHome() {
             aria-hidden="true"
           />
         </div>
-        <p class="mt-4 text-sm font-semibold tabular-nums text-ink-500">
+        <p class="section-label mt-4 tabular-nums">
           {{ error.statusCode }}
         </p>
-        <h1 class="mt-1 text-lg font-semibold text-ink-900">
+        <h1 class="display-title mt-2 text-2xl text-ink-900">
           {{ isNotFound ? 'Sayfa bulunamadı' : 'Bir hata oluştu' }}
         </h1>
         <p class="mt-1 max-w-sm text-sm text-ink-500">
@@ -50,7 +50,7 @@ function goHome() {
               aria-hidden="true"
             />
           </template>
-          Dashboard'a dön
+          Genel bakışa dön
         </UiButton>
       </div>
     </div>

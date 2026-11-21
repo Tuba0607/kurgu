@@ -8,12 +8,13 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'tr' },
-      title: 'Kilit Content Studio',
+      title: 'kurgu.',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'Müşteri ve içerik yönetim paneli' },
-        { name: 'theme-color', content: '#242424' },
+        { name: 'description', content: 'Ajans hesap yöneticileri için müşteri ve içerik takip paneli' },
+        { name: 'theme-color', content: '#1C1520' },
       ],
+      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     },
   },
 

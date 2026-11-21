@@ -186,7 +186,7 @@ function onSaved(updated: ContentDetail) {
             <span
               v-if="reviewDays !== null"
               class="inline-flex items-center gap-1.5 text-[13px] font-medium"
-              :class="reviewDays > LONG_REVIEW_DAYS ? 'text-amber-800' : 'text-ink-500'"
+              :class="reviewDays > LONG_REVIEW_DAYS ? 'text-status-review-ink' : 'text-ink-500'"
             >
               <Clock
                 class="size-3.5"
@@ -234,7 +234,7 @@ function onSaved(updated: ContentDetail) {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h2
                 id="content-body-title"
-                class="text-sm font-semibold text-ink-900"
+                class="section-label"
               >
                 İçerik metni
               </h2>
@@ -303,7 +303,7 @@ function onSaved(updated: ContentDetail) {
           >
             <h2
               id="content-history-title"
-              class="mb-4 text-sm font-semibold text-ink-900"
+              class="section-label mb-4"
             >
               Durum geçmişi
             </h2>
@@ -319,7 +319,7 @@ function onSaved(updated: ContentDetail) {
           >
             <h2
               id="content-status-title"
-              class="mb-3 text-sm font-semibold text-ink-900"
+              class="section-label mb-3"
             >
               Durum
             </h2>
@@ -344,7 +344,7 @@ function onSaved(updated: ContentDetail) {
           >
             <h2
               id="content-details-title"
-              class="text-sm font-semibold text-ink-900"
+              class="section-label"
             >
               Detaylar
             </h2>

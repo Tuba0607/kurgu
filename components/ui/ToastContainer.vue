@@ -24,7 +24,7 @@ async function runAction(id: number, action: ToastAction) {
         v-for="toast in toasts"
         :key="toast.id"
         :role="toast.variant === 'error' ? 'alert' : 'status'"
-        class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl bg-white p-4 shadow-overlay ring-1 ring-ink-900/5"
+        class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl bg-surface p-4 shadow-overlay ring-1 ring-ink-900/5"
       >
         <CircleCheck
           v-if="toast.variant === 'success'"

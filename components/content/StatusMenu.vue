@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
       :id="`${baseId}-menu`"
       role="menu"
       :aria-label="`${label} durumu`"
-      class="fixed z-40 w-48 rounded-xl border border-ink-200 bg-white p-1 shadow-popover"
+      class="fixed z-40 w-48 rounded-xl border border-ink-200 bg-surface p-1 shadow-popover"
       :style="menuStyle"
       @keydown="onMenuKeydown"
     >

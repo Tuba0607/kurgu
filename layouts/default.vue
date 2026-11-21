@@ -20,19 +20,24 @@ watch(() => route.fullPath, closeMenu)
   <div class="min-h-dvh bg-canvas">
     <a
       href="#main-content"
-      class="sr-only z-[70] rounded-lg bg-white px-4 py-2 text-sm font-medium text-ink-900 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      class="sr-only z-[70] rounded-lg bg-surface px-4 py-2 text-sm font-medium text-ink-900 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
     >İçeriğe atla</a>
 
-    <!-- Desktop sidebar -->
-    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[264px] lg:block">
+    <!-- Desktop sidebar (>= 1024px) -->
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[248px] lg:block">
       <AppSidebar />
     </aside>
 
-    <!-- Mobile top bar -->
-    <header class="sticky top-0 z-20 flex h-14 items-center gap-3 bg-sidebar px-4 lg:hidden">
+    <!-- Tablet (768–1023px): collapsed icon rail -->
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[76px] md:block lg:hidden">
+      <AppSidebar collapsed />
+    </aside>
+
+    <!-- Mobile top bar (< 768px) -->
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-3 bg-sidebar px-4 md:hidden">
       <button
         type="button"
-        class="-ml-1 flex size-9 items-center justify-center rounded-lg text-ink-300 transition hover:bg-sidebar-hover hover:text-white focus-visible:ring-offset-sidebar"
+        class="-ml-1 flex size-9 items-center justify-center rounded-lg text-sidebar-text transition hover:bg-sidebar-hover hover:text-white focus-visible:ring-offset-sidebar"
         aria-label="Menüyü aç"
         aria-controls="mobile-menu"
         :aria-expanded="menuOpen"
@@ -59,7 +64,7 @@ watch(() => route.fullPath, closeMenu)
       >
         <div
           v-if="menuOpen"
-          class="fixed inset-0 z-40 bg-ink-950/30 lg:hidden"
+          class="fixed inset-0 z-40 bg-ink-950/40 md:hidden"
           aria-hidden="true"
           @click="closeMenu"
         />
@@ -77,7 +82,7 @@ watch(() => route.fullPath, closeMenu)
           role="dialog"
           aria-modal="true"
           aria-label="Ana menü"
-          class="fixed inset-y-0 left-0 z-50 w-[264px] max-w-[85vw] shadow-overlay lg:hidden"
+          class="fixed inset-y-0 left-0 z-50 w-[264px] max-w-[85vw] shadow-overlay md:hidden"
         >
           <AppSidebar
             closable
@@ -89,10 +94,10 @@ watch(() => route.fullPath, closeMenu)
 
     <main
       id="main-content"
-      class="outline-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:pl-[264px]"
+      class="outline-none focus-visible:ring-0 focus-visible:ring-offset-0 md:pl-[76px] lg:pl-[248px]"
       tabindex="-1"
     >
-      <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <div class="mx-auto w-full max-w-[1320px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-9">
         <slot />
       </div>
     </main>

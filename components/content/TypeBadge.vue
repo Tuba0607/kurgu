@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
   <span
-    class="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-600"
+    class="inline-flex items-center gap-1.5 whitespace-nowrap align-middle text-sm text-ink-600"
     :title="short ? CONTENT_TYPE_LABELS[type] : undefined"
   >
     <component

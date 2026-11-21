@@ -23,7 +23,7 @@ const overLimit = computed(() => charLimit.value !== null && characterCount.valu
     <!-- Social post: a single post card -->
     <article
       v-if="content.type === 'SOCIAL_POST'"
-      class="mx-auto max-w-md rounded-2xl border border-ink-200 bg-white p-4 shadow-card sm:p-5"
+      class="mx-auto max-w-md rounded-2xl border border-ink-200 bg-surface p-4 shadow-card sm:p-5"
     >
       <header class="flex items-center gap-3">
         <span
@@ -96,7 +96,7 @@ const overLimit = computed(() => charLimit.value !== null && characterCount.valu
     <!-- Web page: neutral browser frame -->
     <div
       v-else
-      class="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-card"
+      class="overflow-hidden rounded-xl border border-ink-200 bg-surface shadow-card"
     >
       <div class="flex items-center gap-3 border-b border-ink-200 bg-ink-50 px-3 py-2.5">
         <span
@@ -107,7 +107,7 @@ const overLimit = computed(() => charLimit.value !== null && characterCount.valu
           <span class="size-2.5 rounded-full bg-ink-300" />
           <span class="size-2.5 rounded-full bg-ink-300" />
         </span>
-        <span class="min-w-0 flex-1 truncate rounded-md bg-white px-3 py-1 text-xs text-ink-500 ring-1 ring-inset ring-ink-200">
+        <span class="min-w-0 flex-1 truncate rounded-md bg-surface px-3 py-1 text-xs text-ink-500 ring-1 ring-inset ring-ink-200">
           {{ titleToPath(content.title) }}
         </span>
       </div>

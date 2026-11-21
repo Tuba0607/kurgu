@@ -20,10 +20,10 @@ const props = withDefaults(defineProps<{
 const NuxtLink = resolveComponent('NuxtLink')
 
 const VARIANT_CLASSES = {
-  primary: 'bg-primary text-white shadow-sm hover:bg-primary-hover active:bg-primary disabled:hover:bg-primary',
-  secondary: 'border border-ink-300 bg-white text-ink-700 shadow-sm hover:bg-ink-50 hover:text-ink-900',
+  primary: 'bg-primary text-primary-ink hover:bg-primary-hover disabled:hover:bg-primary',
+  secondary: 'border border-ink-300 bg-surface text-ink-800 hover:border-ink-400 hover:bg-ink-50',
   ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
-  danger: 'bg-rose-600 text-white shadow-sm hover:bg-rose-700 disabled:hover:bg-rose-600',
+  danger: 'bg-rose-700 text-white hover:bg-rose-800 disabled:hover:bg-rose-700',
 } as const
 
 const SIZE_CLASSES = {
@@ -41,7 +41,7 @@ const isDisabled = computed(() => props.disabled || props.loading)
     :type="to ? undefined : type"
     :disabled="to ? undefined : isDisabled"
     :aria-busy="loading || undefined"
-    class="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+    class="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-full font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
     :class="[VARIANT_CLASSES[variant], SIZE_CLASSES[size], block && 'w-full']"
   >
     <Loader2

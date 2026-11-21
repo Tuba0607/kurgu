@@ -6,6 +6,8 @@ const props = withDefaults(defineProps<{
   title: string
   description?: string
   size?: 'md' | 'lg'
+  /** Small dialogs (confirmations) stay a bottom sheet on phones instead of full screen. */
+  compact?: boolean
   /** Prevents closing (e.g. while a request is in flight). */
   persistent?: boolean
 }>(), {
@@ -89,8 +91,11 @@ onBeforeUnmount(() => toggleViewportTracking(false))
           :aria-labelledby="titleId"
           :aria-describedby="description ? descriptionId : undefined"
           tabindex="-1"
-          class="relative flex max-h-[92%] w-full animate-dialog-in flex-col rounded-t-xl bg-white shadow-overlay ring-1 ring-ink-900/5 focus:outline-none sm:rounded-xl"
-          :class="size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg'"
+          class="relative flex w-full animate-dialog-in flex-col bg-surface shadow-overlay ring-1 ring-ink-900/5 focus:outline-none sm:max-h-[92%] sm:rounded-card"
+          :class="[
+            size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
+            compact ? 'max-h-[92%] rounded-t-card' : 'h-full max-h-full sm:h-auto',
+          ]"
         >
           <header class="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 sm:px-6">
             <div class="min-w-0">

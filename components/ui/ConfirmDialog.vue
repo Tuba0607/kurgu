@@ -25,6 +25,7 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
     :title="title"
     :description="description"
     :persistent="loading"
+    compact
     @close="emit('cancel')"
   >
     <slot />

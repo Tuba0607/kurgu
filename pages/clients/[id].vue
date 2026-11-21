@@ -239,7 +239,7 @@ function onContentSaved() {
             aria-hidden="true"
           >{{ getInitials(client.name) }}</span>
           <div class="min-w-0">
-            <h1 class="break-words text-2xl font-semibold tracking-tight text-ink-900">
+            <h1 class="display-title break-words text-[24px] leading-tight text-ink-900 sm:text-[28px]">
               {{ client.name }}
             </h1>
             <p
@@ -273,7 +273,7 @@ function onContentSaved() {
           <div class="flex items-center justify-between gap-3">
             <h2
               id="client-info-title"
-              class="text-sm font-semibold text-ink-900"
+              class="section-label"
             >
               Müşteri bilgileri
             </h2>
@@ -412,7 +412,7 @@ function onContentSaved() {
           <div class="flex flex-col gap-3 border-b border-ink-100 px-4 pt-4 sm:px-5">
             <h2
               id="client-contents-title"
-              class="text-sm font-semibold text-ink-900"
+              class="section-label"
             >
               İçerikler
             </h2>

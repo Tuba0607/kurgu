@@ -17,25 +17,26 @@ interface StatusStyle {
   stroke: string
 }
 
-// Status colors: neutral for draft, amber for review, green for published.
+// Status colours come from the `status` design tokens (tailwind.config.ts) and are
+// used identically for badges, chart segments and the row stripes.
 export const CONTENT_STATUS_STYLES: Record<ContentStatusValue, StatusStyle> = {
   DRAFT: {
-    badge: 'bg-ink-100 text-ink-700 ring-ink-500/20',
-    dot: 'bg-ink-400',
-    bar: 'bg-ink-400',
-    stroke: 'stroke-ink-400',
+    badge: 'bg-status-draft-soft text-status-draft-ink ring-status-draft/25',
+    dot: 'bg-status-draft',
+    bar: 'bg-status-draft',
+    stroke: 'stroke-status-draft',
   },
   IN_REVIEW: {
-    badge: 'bg-amber-50 text-amber-800 ring-amber-600/20',
-    dot: 'bg-amber-500',
-    bar: 'bg-amber-500',
-    stroke: 'stroke-amber-500',
+    badge: 'bg-status-review-soft text-status-review-ink ring-status-review/30',
+    dot: 'bg-status-review',
+    bar: 'bg-status-review',
+    stroke: 'stroke-status-review',
   },
   PUBLISHED: {
-    badge: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-    dot: 'bg-emerald-500',
-    bar: 'bg-emerald-500',
-    stroke: 'stroke-emerald-500',
+    badge: 'bg-status-published-soft text-status-published-ink ring-status-published/25',
+    dot: 'bg-status-published',
+    bar: 'bg-status-published',
+    stroke: 'stroke-status-published',
   },
 }
 

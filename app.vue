@@ -1,14 +1,14 @@
 <script setup lang="ts">
-const APP_NAME = 'Kilit Content Studio'
+const APP_NAME = 'kurgu.'
 
 useHead({
-  titleTemplate: title => (title ? `${title} · ${APP_NAME}` : APP_NAME),
+  titleTemplate: title => (title && title !== APP_NAME ? `${title} · ${APP_NAME}` : `${APP_NAME} — Müşteri ve içerik takip paneli`),
 })
 </script>
 
 <template>
   <NuxtLoadingIndicator
-    color="#EA0029"
+    color="#E8664A"
     :height="2"
   />
   <NuxtRouteAnnouncer />
