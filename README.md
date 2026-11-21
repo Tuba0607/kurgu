@@ -1,6 +1,10 @@
-# Kilit Content Studio
+# kurgu.
 
-Dijital ajans hesap yöneticilerinin müşterilerini ve müşterilere ait içerikleri takip ettiği bir yönetim paneli.
+Ajans hesap yöneticilerinin müşterilerini ve müşterilere ait içerikleri takip ettiği bir **müşteri ve içerik takip paneli**.
+
+![Genel bakış](docs/screenshots/genel-bakis.png)
+
+**Canlı demo:** _yayınlandığında eklenecek_
 
 > Bu proje, **Kilit Grup Full Stack Developer teknik değerlendirmesi** kapsamında hazırlanmıştır.
 
@@ -16,26 +20,28 @@ Dijital ajans hesap yöneticilerinin müşterilerini ve müşterilere ait içeri
 - [Testler ve kalite kontrolleri](#testler-ve-kalite-kontrolleri)
 - [API](#api)
 - [Proje yapısı](#proje-yapısı)
+- [Tasarım kararları](#tasarım-kararları)
 - [Deployment yaklaşımı](#deployment-yaklaşımı)
+- [Sonraki adımlar](#sonraki-adımlar)
 
 ## Amaç ve kapsam
 
 Uygulama, bir ajansın içerik iş akışını tek bir yerden izlemesini sağlar:
 
-- **Genel bakış:** Toplam müşteri ve içerik sayıları, Taslak / Onay bekliyor / Yayında dağılımı ve son eklenen içerikler.
-- **Müşteri yönetimi:** Müşteri ekleme, listeleme, firma adına göre arama ve müşteri detayında ilişkili içerikler.
-- **İçerik yönetimi:** Müşteriye bağlı içerik oluşturma ve düzenleme, durum değiştirme, başlık araması, durum ve müşteri filtreleri.
+- **Genel bakış:** Onay bekleyen içerikler (5 günden uzun bekleyenler vurgulanır), bu hafta yayına çıkacak ve yayın tarihi geçmiş içerikler, durum dağılımı ve son eklenen içerikler.
+- **Müşteri yönetimi:** Ekleme, düzenleme, silme (bağlı içeriklerle birlikte, onaylı), arama, sıralama, durum dağılım çubuğu ve müşteri detayında sayfalanmış içerik listesi.
+- **İçerik yönetimi:** Oluşturma, düzenleme, silme; durum sekmeleri (sayılarıyla), müşteri ve tür filtreleri, başlık araması, sıralama, listeden tek tıkla durum değiştirme ve "Geri al", durum geçmişi, planlanan yayın tarihi, platform ve önizleme.
 
 İçerik türleri **sosyal medya gönderisi**, **blog yazısı** ve **web sayfası**; durumlar **Taslak**, **Onay bekliyor** ve **Yayında**'dır.
 
-Kapsam bilinçli olarak değerlendirme gereksinimleriyle sınırlı tutulmuştur. Kimlik doğrulama, silme işlemleri ve sayfalama bu sürümde yer almaz.
+Kimlik doğrulama bu sürümün kapsamı dışındadır.
 
 ## Teknolojiler
 
 | Katman | Teknoloji |
 |---|---|
 | Uygulama | Nuxt 3, Vue 3 (Composition API), TypeScript (strict) |
-| Arayüz | Tailwind CSS 3, Inter, Lucide ikonları |
+| Arayüz | Tailwind CSS 3 (design token'ları), Unbounded + DM Sans (Fontsource), Lucide ikonları |
 | Backend | Nuxt Server API (Nitro) |
 | Veritabanı | PostgreSQL 16 (yerelde Docker, canlıda Neon) |
 | ORM | Prisma 6 |
@@ -48,7 +54,8 @@ Kapsam bilinçli olarak değerlendirme gereksinimleriyle sınırlı tutulmuştur
 **İçerik iş akışı**
 - İçerik **ilk kez** yayına alındığında `publishedAt` otomatik doldurulur. Yayındaki içeriğin başka bir alanı güncellendiğinde mevcut tarih korunur, yayından kaldırıldığında tarih temizlenir. Bu alan istemciden gönderilemez.
 - Durum, içerik detay sayfasından tek tıkla değiştirilebilir. İstek başarısız olursa seçim eski haline döner.
-- İçeriği olan bir müşteri veritabanı düzeyinde silinemez (`ON DELETE RESTRICT`).
+- Her durum değişikliği `content_status_changes` tablosuna yazılır; detay sayfasında zaman çizelgesi olarak gösterilir. `statusChangedAt` "X gündür onay bekliyor" bilgisini besler.
+- Müşteri silindiğinde içerikleri de silinir (`ON DELETE CASCADE`); onay diyaloğu kaç içeriğin silineceğini yazar.
 
 **Arama ve filtreleme**
 - Arama ve filtreler URL query parametreleriyle senkronize çalışır. Sayfa yenilenince korunur, bağlantı olarak paylaşılabilir.
@@ -132,11 +139,11 @@ npm run db:down    # container'ı durdurur (veri volume'de kalır)
 |---|---|
 | `npm run db:migrate` | Yerelde migration oluşturur ve uygular (`prisma migrate dev`) |
 | `npm run db:deploy` | Mevcut migration'ları uygular; canlı ortam için (`prisma migrate deploy`) |
-| `npm run db:seed` | Kurgusal demo verisini yükler: 6 müşteri, 16 içerik |
+| `npm run db:seed` | Demo verisini **sıfırlayıp** yeniden yükler: 8 müşteri, 22 içerik, durum geçmişi |
 | `npm run db:generate` | Prisma Client'ı yeniden üretir |
 | `npm run db:studio` | Prisma Studio'yu açar |
 
-Seed **idempotent**tir: kayıtlar sabit kimliklerle `upsert` edilir, tekrar çalıştırıldığında kayıt çoğalmaz. Uygulama içinden eklenen kayıtlara dokunulmaz. Seed'deki tüm firma, kişi ve iletişim bilgileri kurgusaldır; e-posta adresleri ayrılmış `.example` alan adını kullanır.
+Seed tüm müşteri ve içerikleri **silip** demo verisini yeniden oluşturur; tarihler çalıştırıldığı ana göre hesaplanır (son 6 hafta, bazı içerikler 5 günden uzun süredir onayda, bazılarının yayın tarihi bu hafta ya da geçmiş). Güvenlik için yalnızca yerel veritabanında çalışır; uzak bir veritabanında `SEED_ALLOW_REMOTE=1` gerekir. Tüm firma ve kişi bilgileri kurgusaldır; e-posta adresleri ayrılmış `.example` alan adını kullanır.
 
 ## Testler ve kalite kontrolleri
 
@@ -159,14 +166,18 @@ Seed **idempotent**tir: kayıtlar sabit kimliklerle `upsert` edilir, tekrar çal
 
 | Metot | Yol | Açıklama |
 |---|---|---|
-| `GET` | `/api/dashboard` | Toplamlar, durum sayıları, son 6 içerik |
-| `GET` | `/api/clients?search=` | Müşteri listesi ve içerik sayıları |
+| `GET` | `/api/dashboard` | Onay kuyruğu, yayın takvimi metrikleri, durum sayıları, son 6 içerik |
+| `GET` | `/api/clients?search=&sort=` | Müşteri listesi ve durumlara göre içerik sayıları |
 | `POST` | `/api/clients` | Müşteri oluşturma |
-| `GET` | `/api/clients/:id` | Müşteri detayı ve içerikleri |
-| `GET` | `/api/contents?search=&status=&clientId=` | İçerik listesi (filtreler birlikte kullanılabilir) |
+| `GET` | `/api/clients/:id` | Müşteri detayı ve durum sayıları |
+| `PATCH` | `/api/clients/:id` | Müşteri güncelleme (kısmi) |
+| `DELETE` | `/api/clients/:id` | Müşteriyi içerikleriyle birlikte siler, silinen içerik sayısını döndürür |
+| `GET` | `/api/industries` | Kullanılan sektörler (combobox önerileri) |
+| `GET` | `/api/contents?search=&status=&type=&clientId=&sort=&page=&pageSize=` | Sayfalanmış içerik listesi ve sekme sayıları |
 | `POST` | `/api/contents` | İçerik oluşturma |
-| `GET` | `/api/contents/:id` | İçerik detayı |
+| `GET` | `/api/contents/:id` | İçerik detayı ve durum geçmişi |
 | `PATCH` | `/api/contents/:id` | İçerik güncelleme (kısmi) |
+| `DELETE` | `/api/contents/:id` | İçerik silme |
 
 ## Proje yapısı
 
@@ -187,7 +198,7 @@ Seed **idempotent**tir: kayıtlar sabit kimliklerle `upsert` edilir, tekrar çal
 │   ├── schemas/                # Zod doğrulama şemaları
 │   └── utils/                  # Doğrulama ve arama yardımcıları
 ├── server/
-│   ├── api/                    # 8 API endpoint'i
+│   ├── api/                    # 13 API endpoint'i
 │   └── utils/                  # Prisma singleton, HTTP/hata yardımcıları, iş kuralları
 ├── prisma/                     # Şema, migration'lar ve seed
 ├── tests/
@@ -198,6 +209,14 @@ Seed **idempotent**tir: kayıtlar sabit kimliklerle `upsert` edilir, tekrar çal
 ```
 
 Kod, değişken ve dosya adları İngilizcedir; kullanıcı arayüzü Türkçedir.
+
+## Tasarım kararları
+
+1. **Ana kart onay bekleyenlere ayrıldı.** Hesap yöneticisinin günlük işi, müşteriden onay bekleyen içerikleri takip etmektir. Toplam sayılar bilgi verir ama eylem gerektirmez; bu yüzden ana kart "kaç içerik bekliyor, kaçı 5 günü geçti" sorusunu yanıtlar ve tek tıkla en uzun bekleyenden sıralı listeye götürür.
+2. **Filtreler URL'de tutulur.** Arama, durum, müşteri, tür, sıralama ve sayfa query parametrelerindedir. Böylece bir filtre bağlantı olarak paylaşılabilir, sayfa yenilense de korunur ve tarayıcının geri tuşu beklenen şekilde çalışır.
+3. **Durum, listeden ve geri alınabilir şekilde değişir.** En sık yapılan işlem için detay sayfasına gitmek gerekmez. Yanlış tıklamanın maliyeti düşük kalsın diye her değişiklikten sonra 5 saniyelik "Geri al" sunulur; liste ve detay sayfası aynı mantığı paylaşır.
+4. **Durum renkleri marka renginden ayrıdır.** Mercan yalnızca marka ve birincil eylemler içindir; Taslak / Onay bekliyor / Yayında rozet, grafik ve satır şeridinde aynı token'larla gösterilir. Mercan butonlarda beyaz yerine koyu metin kullanılır, çünkü beyaz metin WCAG AA kontrastını sağlamaz.
+5. **Ön yüz ve API aynı doğrulamayı kullanır.** Zod şemaları `shared/` altındadır; telefon `+90 5XX XXX XX XX`, sektör Türkçe baş harf büyük biçimde normalize edilir. Ön yüz kullanıcıya erken geri bildirim verir, API ise tek doğruluk kaynağıdır.
 
 ## Deployment yaklaşımı
 
@@ -215,3 +234,17 @@ Hedef ortam **Vercel** (uygulama) ve **Neon PostgreSQL**'dir (veritabanı). Yere
    ```
 
 Gerçek bağlantı bilgileri yalnızca Vercel ortam değişkenlerinde ve yerel `.env` dosyasında tutulur; hiçbir zaman depoya eklenmez.
+
+**Önerilen dağıtım:** Uygulama için **Vercel** (Nuxt'ı sıfır yapılandırmayla tanır, her PR için önizleme ortamı sunar), veritabanı için **Neon** (sunucusuz PostgreSQL, Vercel ile aynı bölgede çalıştırılabilir ve ücretsiz katmanı demo için yeterlidir). İlk kurulumda migration'lar uygulandıktan sonra demo verisi bir kez yüklenebilir:
+
+```bash
+DATABASE_URL="<neon-direct-url>" SEED_ALLOW_REMOTE=1 npm run db:seed
+```
+
+## Sonraki adımlar
+
+- **Arşivleme:** Müşteri silmek yerine arşivlemek (içerikler korunur, listelerde gizlenir); şu an silme işlemi içerikleri de kalıcı olarak siler.
+- Kimlik doğrulama ve rol bazlı yetki (hesap yöneticisi / yönetici).
+- Türkçe URL'ler (`/musteriler`, `/icerikler`, `?durum=onay`).
+- ⌘K / Ctrl+K genel arama ve klavye kısayolları.
+- Ekran görüntüleri: `docs/screenshots/` klasörüne eklenecek.
