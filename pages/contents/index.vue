@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FilePlus2, FileText, SearchX, X } from 'lucide-vue-next'
-import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
+import { CONTENT_SORT_LABELS, CONTENT_SORTS, CONTENT_STATUS_LABELS, CONTENT_STATUSES, CONTENT_TYPE_LABELS, CONTENT_TYPES, type ContentSortValue, type ContentStatusValue } from '#shared/constants/content'
+import type { ContentListItem } from '~/types/api'
 import { ID_PATTERN } from '#shared/schemas/common'
 import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
 
@@ -11,6 +12,8 @@ useHead({ title: 'İçerikler' })
 const { input: searchInput, applied: search } = useDebouncedQuerySearch('search', 300, ['page'])
 const statusParam = useRouteQueryValue('status')
 const clientIdParam = useRouteQueryValue('clientId')
+const typeParam = useRouteQueryValue('type')
+const sortParam = useRouteQueryValue('sort')
 const page = computed(() => parsePageParam(useRouteQueryValue('page').value))
 // Discrete filter changes (status, client, chip removal) create history entries.
 const updateQuery = useQueryUpdater({ history: 'push' })
@@ -20,11 +23,14 @@ const replaceQuery = useQueryUpdater()
 // Invalid values in a hand-edited URL are ignored instead of causing an API error.
 const status = computed(() => (isContentStatus(statusParam.value) ? statusParam.value : ''))
 const clientId = computed(() => (ID_PATTERN.test(clientIdParam.value) ? clientIdParam.value : ''))
+const type = computed(() => ((CONTENT_TYPES as readonly string[]).includes(typeParam.value) ? typeParam.value : ''))
+const sort = computed<ContentSortValue>(() => ((CONTENT_SORTS as readonly string[]).includes(sortParam.value) ? sortParam.value as ContentSortValue : 'newest'))
 // Filters applied to the current result set (debounced URL values): drive the result label and empty state.
 const hasAppliedFilters = computed(() => hasActiveContentFilters({
   search: search.value,
   status: status.value,
   clientId: clientId.value,
+  type: type.value,
 }))
 
 // Paginated on the server: only the current page is loaded.
@@ -33,6 +39,8 @@ const { data: listing, status: fetchStatus, error, refresh } = await useFetch('/
     search: search.value || undefined,
     status: status.value || undefined,
     clientId: clientId.value || undefined,
+    type: type.value || undefined,
+    sort: sort.value === 'newest' ? undefined : sort.value,
     page: page.value > 1 ? page.value : undefined,
     pageSize: CONTENT_PAGE_SIZE,
   })),
@@ -68,6 +76,34 @@ const clientFilterOptions = computed(() => [
   ...(clients.value ?? []).map(client => ({ value: client.id, label: client.name })),
 ])
 
+const typeFilterOptions = [
+  { value: '', label: 'Tüm türler' },
+  ...CONTENT_TYPES.map(value => ({ value, label: CONTENT_TYPE_LABELS[value] })),
+]
+const sortOptions = CONTENT_SORTS.map(value => ({ value, label: CONTENT_SORT_LABELS[value] }))
+
+const selectedType = computed({
+  get: () => type.value,
+  set: value => updateQuery({ type: value, page: null }),
+})
+const selectedSort = computed({
+  get: () => sort.value as string,
+  set: value => updateQuery({ sort: value === 'newest' ? null : value, page: null }),
+})
+
+/** Count shown in each status tab (for the other active filters). */
+function tabCount(value: string): number | null {
+  const counts = listing.value?.statusCounts
+  if (!counts) return null
+  return value ? counts[value as ContentStatusValue] : Object.values(counts).reduce((sum, count) => sum + count, 0)
+}
+
+// Status changes from the list: saved immediately, undo from the toast.
+const { changeStatus, pendingId } = useStatusChange(() => refresh())
+function onStatusChange(item: ContentListItem, next: ContentStatusValue) {
+  changeStatus(item.id, item.status, next)
+}
+
 const statusTabs = [
   { value: '', label: 'Tümü' },
   ...CONTENT_STATUSES.map(value => ({ value, label: CONTENT_STATUS_LABELS[value] })),
@@ -85,7 +121,7 @@ const isRefreshing = computed(() => fetchStatus.value === 'pending' && Boolean(l
 // back/forward and shared links always show the right chips.
 const selectedClientName = computed(() => clients.value?.find(client => client.id === clientId.value)?.name)
 const activeChips = computed(() => buildActiveFilterChips(
-  { search: search.value, status: status.value, clientId: clientId.value },
+  { search: search.value, status: status.value, clientId: clientId.value, type: type.value },
   selectedClientName.value,
 ))
 
@@ -157,6 +193,38 @@ function openEdit(id: string) {
     >
       <!-- Filters -->
       <div class="space-y-3 border-b border-ink-100 p-4 sm:px-5">
+        <!-- Status tabs with counts (for the other active filters) -->
+        <div
+          class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5"
+          role="group"
+          aria-label="Duruma göre filtrele"
+        >
+          <button
+            v-for="tab in statusTabs"
+            :key="tab.value"
+            type="button"
+            class="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition"
+            :class="status === tab.value
+              ? 'bg-ink-900 text-white'
+              : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900'"
+            :aria-pressed="status === tab.value"
+            @click="updateQuery({ status: tab.value, page: null })"
+          >
+            <span
+              v-if="tab.value"
+              class="size-2 rounded-full"
+              :class="CONTENT_STATUS_STYLES[tab.value].dot"
+              aria-hidden="true"
+            />
+            {{ tab.label }}
+            <span
+              v-if="tabCount(tab.value) !== null"
+              class="rounded-full px-1.5 text-xs tabular-nums"
+              :class="status === tab.value ? 'bg-white/20 text-white' : 'bg-ink-100 text-ink-600'"
+            >{{ tabCount(tab.value) }}</span>
+          </button>
+        </div>
+
         <div class="flex flex-wrap items-center gap-3">
           <UiSearchInput
             v-model="searchInput"
@@ -166,35 +234,22 @@ function openEdit(id: string) {
           />
           <UiListbox
             v-model="selectedClientId"
-            class="w-full sm:w-56"
+            class="w-full sm:w-52"
             label="Müşteriye göre filtrele"
             :options="clientFilterOptions"
           />
-          <div
-            class="flex w-full gap-1 rounded-lg bg-ink-100 p-1 sm:inline-flex sm:w-auto"
-            role="group"
-            aria-label="Duruma göre filtrele"
-          >
-            <button
-              v-for="tab in statusTabs"
-              :key="tab.value"
-              type="button"
-              class="flex flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium transition sm:flex-none sm:px-3 sm:text-sm"
-              :class="status === tab.value
-                ? 'bg-white text-ink-900 shadow-sm'
-                : 'text-ink-600 hover:text-ink-900'"
-              :aria-pressed="status === tab.value"
-              @click="updateQuery({ status: tab.value, page: null })"
-            >
-              <span
-                v-if="tab.value"
-                class="hidden size-1.5 rounded-full sm:block"
-                :class="CONTENT_STATUS_STYLES[tab.value].dot"
-                aria-hidden="true"
-              />
-              {{ tab.label }}
-            </button>
-          </div>
+          <UiListbox
+            v-model="selectedType"
+            class="w-full sm:w-48"
+            label="Türe göre filtrele"
+            :options="typeFilterOptions"
+          />
+          <UiListbox
+            v-model="selectedSort"
+            class="w-full sm:ml-auto sm:w-56"
+            label="Sıralama"
+            :options="sortOptions"
+          />
         </div>
 
         <!-- The visible total lives in the pagination footer; this announces result changes
@@ -299,7 +354,9 @@ function openEdit(id: string) {
             :items="contents"
             class="transition-opacity"
             :class="isRefreshing && 'opacity-60'"
+            :pending-id="pendingId"
             @edit="openEdit"
+            @status-change="onStatusChange"
           />
           <UiPagination
             :page="listing.page"

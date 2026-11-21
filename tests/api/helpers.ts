@@ -16,7 +16,7 @@ export interface ApiResponse {
 
 /** Sends a request to the test server. `rawBody` sends the string as-is (for malformed JSON). */
 export async function api(
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   options: { body?: unknown, rawBody?: string } = {},
 ): Promise<ApiResponse> {
@@ -31,7 +31,7 @@ export async function api(
   return { status: response.status, body: text ? JSON.parse(text) : null }
 }
 
-/** Removes every record created by API tests (contents first because of ON DELETE RESTRICT). */
+/** Removes every record created by API tests (contents first, then their clients). */
 export async function cleanupTestRecords(): Promise<void> {
   await testPrisma.content.deleteMany({
     where: {

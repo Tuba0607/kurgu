@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { ChevronRight } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES, type ContentStatusValue } from '#shared/constants/content'
 
 /**
  * Lightweight SVG donut for the content status distribution (no chart library).
- * Informational only: segments and legend show a tooltip, they never navigate
- * or filter. Mouse: hover a segment. Touch: tap a segment. Keyboard: tab to the
- * legend buttons below the chart.
+ * The ring itself only shows a tooltip (hover / tap); the legend rows next to it
+ * show count and share and open the contents list filtered by that status.
  */
 const props = defineProps<{
   counts: Record<ContentStatusValue, number>
@@ -59,7 +59,10 @@ async function activate(status: ContentStatusValue) {
   const centerY = chartRect.top - rootRect.top + (VIEWBOX / 2) * scale
   const outerRadius = (RADIUS + STROKE / 2 + 2) * scale
   const holeRadius = (RADIUS - STROKE / 2) * scale
-  const legendTop = legendList.value ? legendList.value.offsetTop : Number.POSITIVE_INFINITY
+  const legendEl = legendList.value
+  const legendBox = legendEl
+    ? { left: legendEl.offsetLeft, top: legendEl.offsetTop, right: legendEl.offsetLeft + legendEl.offsetWidth, bottom: legendEl.offsetTop + legendEl.offsetHeight }
+    : null
 
   // Anchor just outside the ring, at the middle of the segment's arc
   // (or 12 o'clock for a status without contents).
@@ -84,7 +87,11 @@ async function activate(status: ContentStatusValue) {
 
   // Valid: inside the card, not over the centre count, not over the legend.
   const isValid = (box: Box) => {
-    if (box.top < -CARD_PADDING || box.top + height > legendTop - 4) return false
+    if (box.top < -CARD_PADDING || box.top + height > rootRect.height + CARD_PADDING) return false
+    const overlapsLegend = legendBox
+      && box.left < legendBox.right + 4 && box.left + width > legendBox.left - 4
+      && box.top < legendBox.bottom + 4 && box.top + height > legendBox.top - 4
+    if (overlapsLegend) return false
     const nearestX = Math.min(Math.max(centerX, box.left), box.left + width)
     const nearestY = Math.min(Math.max(centerY, box.top), box.top + height)
     return Math.hypot(centerX - nearestX, centerY - nearestY) > holeRadius
@@ -116,10 +123,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
 <template>
   <div
     ref="root"
-    class="relative"
+    class="relative flex flex-col items-center gap-5 sm:flex-row sm:gap-7"
     @keydown.esc="deactivate"
   >
-    <div class="relative mx-auto size-44">
+    <div class="relative size-36 shrink-0">
       <svg
         ref="chart"
         :viewBox="`0 0 ${VIEWBOX} ${VIEWBOX}`"
@@ -168,35 +175,39 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownO
       Henüz içerik yok. İçerik eklendiğinde dağılım burada görünecek.
     </p>
 
-    <!-- Legend: keyboard / screen reader access to the same information -->
-    <!-- Top margin leaves just enough room for the tooltip of bottom segments above the legend -->
+    <!-- Legend: count + share per status; each row opens the filtered contents list -->
     <ul
       ref="legendList"
-      class="mt-6 flex flex-wrap justify-center gap-x-1 gap-y-1"
+      class="w-full min-w-0 flex-1 space-y-0.5"
       aria-label="Durumlar"
     >
       <li
         v-for="item in legend"
         :key="item.status"
       >
-        <button
-          type="button"
-          class="flex h-8 cursor-default items-center gap-2 rounded-md px-2 text-[13px] text-ink-600 transition-colors hover:bg-ink-50 focus-visible:ring-offset-white"
+        <NuxtLink
+          :to="{ path: '/contents', query: { status: item.status } }"
+          class="group flex h-10 items-center gap-3 rounded-lg px-2.5 text-sm text-ink-700 transition-colors hover:bg-ink-50 hover:text-ink-900"
           :class="active === item.status && 'bg-ink-50 text-ink-900'"
-          :aria-label="item.text"
+          :aria-label="`${item.text}. İçeriklerde göster`"
           @mouseenter="activate(item.status)"
           @mouseleave="deactivate"
           @focus="activate(item.status)"
           @blur="deactivate"
-          @click="activate(item.status)"
         >
           <span
-            class="size-2 shrink-0 rounded-full"
+            class="size-2.5 shrink-0 rounded-full"
             :class="CONTENT_STATUS_STYLES[item.status].dot"
             aria-hidden="true"
           />
-          {{ item.label }}
-        </button>
+          <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+          <span class="font-semibold tabular-nums text-ink-900">{{ formatNumber(counts[item.status]) }}</span>
+          <span class="w-10 text-right text-[13px] tabular-nums text-ink-500">{{ formatPercent(counts[item.status], total) }}</span>
+          <ChevronRight
+            class="-mr-1 size-4 shrink-0 text-ink-300 transition group-hover:translate-x-0.5 group-hover:text-ink-600"
+            aria-hidden="true"
+          />
+        </NuxtLink>
       </li>
     </ul>
 

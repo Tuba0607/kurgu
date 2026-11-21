@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CONTENT_TYPE_LABELS } from '#shared/constants/content'
+import { CONTENT_TYPE_LABELS, SOCIAL_PLATFORM_CHAR_LIMITS, SOCIAL_PLATFORM_LABELS } from '#shared/constants/content'
 import type { ContentDetail } from '~/types/api'
 
 /**
@@ -7,12 +7,15 @@ import type { ContentDetail } from '~/types/api'
  * (no images, no platform branding). The body is always rendered as text.
  */
 const props = defineProps<{
-  content: Pick<ContentDetail, 'title' | 'body' | 'type' | 'publishedAt' | 'createdAt'> & { client: { name: string } }
+  content: Pick<ContentDetail, 'title' | 'body' | 'type' | 'platform' | 'publishedAt' | 'createdAt'> & { client: { name: string } }
 }>()
 
 const paragraphs = computed(() => splitParagraphs(props.content.body))
 const date = computed(() => formatDate(props.content.publishedAt ?? props.content.createdAt))
 const characterCount = computed(() => (props.content.body ?? '').trim().length)
+// Platform limit (X 280, Instagram 2200, LinkedIn 3000...) for social posts.
+const charLimit = computed(() => (props.content.platform ? SOCIAL_PLATFORM_CHAR_LIMITS[props.content.platform] : null))
+const overLimit = computed(() => charLimit.value !== null && characterCount.value > charLimit.value)
 </script>
 
 <template>
@@ -32,7 +35,7 @@ const characterCount = computed(() => (props.content.body ?? '').trim().length)
             {{ content.client.name }}
           </p>
           <p class="text-[13px] text-ink-500">
-            {{ date }} · {{ CONTENT_TYPE_LABELS[content.type] }}
+            {{ date }} · {{ content.platform ? SOCIAL_PLATFORM_LABELS[content.platform] : CONTENT_TYPE_LABELS[content.type] }}
           </p>
         </div>
       </header>
@@ -49,7 +52,19 @@ const characterCount = computed(() => (props.content.body ?? '').trim().length)
         {{ content.title }}
       </p>
       <footer class="mt-4 border-t border-ink-100 pt-3 text-[13px] tabular-nums text-ink-500">
-        {{ formatNumber(characterCount) }} karakter
+        <span
+          class="tabular-nums"
+          :class="overLimit ? 'font-semibold text-rose-700' : ''"
+        >
+          {{ formatNumber(characterCount) }}<template v-if="charLimit"> / {{ formatNumber(charLimit) }}</template> karakter
+        </span>
+        <span
+          v-if="overLimit"
+          class="mt-1 block text-rose-700"
+          role="status"
+        >
+          {{ SOCIAL_PLATFORM_LABELS[content.platform!] }} sınırı {{ formatNumber(characterCount - charLimit!) }} karakter aşıldı; metni kısaltın.
+        </span>
       </footer>
     </article>
 

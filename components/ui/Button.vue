@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-vue-next'
 import type { RouteLocationRaw } from 'vue-router'
 
 const props = withDefaults(defineProps<{
-  variant?: 'primary' | 'secondary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   size?: 'sm' | 'md'
   type?: 'button' | 'submit'
   to?: RouteLocationRaw
@@ -23,6 +23,7 @@ const VARIANT_CLASSES = {
   primary: 'bg-primary text-white shadow-sm hover:bg-primary-hover active:bg-primary disabled:hover:bg-primary',
   secondary: 'border border-ink-300 bg-white text-ink-700 shadow-sm hover:bg-ink-50 hover:text-ink-900',
   ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
+  danger: 'bg-rose-600 text-white shadow-sm hover:bg-rose-700 disabled:hover:bg-rose-600',
 } as const
 
 const SIZE_CLASSES = {

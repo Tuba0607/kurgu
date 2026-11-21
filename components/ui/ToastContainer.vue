@@ -2,6 +2,11 @@
 import { CircleAlert, CircleCheck, X } from 'lucide-vue-next'
 
 const { toasts, dismiss } = useToast()
+
+async function runAction(id: number, action: ToastAction) {
+  dismiss(id)
+  await action.run()
+}
 </script>
 
 <template>
@@ -42,6 +47,14 @@ const { toasts, dismiss } = useToast()
             {{ toast.message }}
           </p>
         </div>
+        <button
+          v-if="toast.action"
+          type="button"
+          class="-my-1 shrink-0 rounded-md px-2 py-1 text-sm font-semibold text-ink-900 underline decoration-ink-300 underline-offset-4 hover:decoration-ink-900"
+          @click="runAction(toast.id, toast.action)"
+        >
+          {{ toast.action.label }}
+        </button>
         <button
           type="button"
           class="-m-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-ink-600"

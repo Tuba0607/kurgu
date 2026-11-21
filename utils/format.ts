@@ -55,3 +55,30 @@ export function getInitials(name: string): string {
 export function splitEmailForWrapping(email: string): string[] {
   return email.split(/(?=[@.])/)
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const relativeFormatter = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'always' })
+
+/** Whole days elapsed since `value` (0 = today). */
+export function daysSince(value: string | Date, now: Date = new Date()): number {
+  const start = new Date(value)
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((today.getTime() - startDay.getTime()) / DAY_MS)
+}
+
+/**
+ * Relative date in Turkish: "bugün", "dün", "2 gün önce", "3 hafta önce";
+ * future dates: "yarın", "5 gün sonra". Older than ~2 months: absolute date.
+ */
+export function formatRelativeDate(value: string | Date | null | undefined, now: Date = new Date()): string {
+  if (!value) return EMPTY_VALUE
+  const days = -daysSince(value, now)
+  if (days === 0) return 'bugün'
+  if (days === -1) return 'dün'
+  if (days === 1) return 'yarın'
+  // numeric: 'always' gives "2 gün önce" instead of the less common "evvelsi gün".
+  if (Math.abs(days) < 7) return relativeFormatter.format(days, 'day')
+  if (Math.abs(days) < 60) return relativeFormatter.format(Math.trunc(days / 7), 'week')
+  return formatDate(value)
+}

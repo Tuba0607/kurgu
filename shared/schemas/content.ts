@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { CONTENT_STATUSES, CONTENT_TYPES } from '../constants/content'
-import { emptyToUndefined, ID_PATTERN, optionalText, requiredText, searchSchema } from './common'
+import { CONTENT_SORTS, CONTENT_STATUSES, CONTENT_TYPES, SOCIAL_PLATFORMS } from '../constants/content'
+import { emptyToNull, emptyToUndefined, ID_PATTERN, optionalText, requiredText, searchSchema } from './common'
 
 const contentTypeSchema = z.enum(CONTENT_TYPES, {
   error: issue => (issue.input === undefined || issue.input === null
@@ -23,6 +23,23 @@ const clientIdSchema = z
   .max(64, { error: 'Geçersiz müşteri seçimi.' })
   .regex(ID_PATTERN, { error: 'Geçersiz müşteri seçimi.' })
 
+const platformSchema = z.preprocess(
+  emptyToNull,
+  z.enum(SOCIAL_PLATFORMS, { error: 'Geçerli bir platform seçiniz.' }).nullable().optional(),
+)
+
+// Planned publish date from a date input ("YYYY-MM-DD") or an ISO timestamp; empty -> null.
+const scheduledAtSchema = z.preprocess(
+  emptyToNull,
+  z
+    .union([
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/).transform(value => new Date(`${value}T09:00:00`)),
+      z.iso.datetime({ offset: true }).transform(value => new Date(value)),
+    ], { error: 'Geçerli bir yayın tarihi seçiniz.' })
+    .nullable()
+    .optional(),
+)
+
 // Fields shared by create and update. `status` has no default here so that a
 // partial update never silently resets it.
 const contentFields = {
@@ -31,6 +48,8 @@ const contentFields = {
   type: contentTypeSchema,
   status: contentStatusSchema,
   clientId: clientIdSchema,
+  platform: platformSchema,
+  scheduledAt: scheduledAtSchema,
 }
 
 export const contentCreateSchema = z.object({
@@ -69,6 +88,14 @@ export const contentListQuerySchema = z.object({
   status: z.preprocess(
     emptyToUndefined,
     z.enum(CONTENT_STATUSES, { error: 'Geçersiz içerik durumu filtresi.' }).optional(),
+  ),
+  type: z.preprocess(
+    emptyToUndefined,
+    z.enum(CONTENT_TYPES, { error: 'Geçersiz içerik türü filtresi.' }).optional(),
+  ),
+  sort: z.preprocess(
+    emptyToUndefined,
+    z.enum(CONTENT_SORTS, { error: 'Geçersiz sıralama.' }).default('newest'),
   ),
   clientId: z.preprocess(
     emptyToUndefined,

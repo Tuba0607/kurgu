@@ -92,12 +92,12 @@ describe('contentUpdateSchema', () => {
 describe('contentListQuerySchema', () => {
   it('accepts combined filters', () => {
     expect(contentListQuerySchema.parse({ search: ' blog ', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota' }))
-      .toEqual({ search: 'blog', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: 1, pageSize: 10 })
+      .toEqual({ search: 'blog', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: 1, pageSize: 10, sort: 'newest' })
   })
 
   it('treats empty filter values as absent', () => {
     expect(contentListQuerySchema.parse({ search: '', status: '', clientId: '' }))
-      .toEqual({ search: undefined, status: undefined, clientId: undefined, page: 1, pageSize: 10 })
+      .toEqual({ search: undefined, status: undefined, clientId: undefined, page: 1, pageSize: 10, sort: 'newest' })
   })
 
   it('rejects invalid filter values', () => {

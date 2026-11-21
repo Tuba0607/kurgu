@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, Copy, FilePlus2, FileText, Mail, Pencil, Phone, SearchX } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, FilePlus2, FileText, Mail, Pencil, Phone, SearchX, Trash2 } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
 import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
 import type { ClientDetail, ClientListItem, ContentListPage } from '~/types/api'
@@ -114,6 +114,28 @@ function onClientSaved(updated: ClientListItem) {
   if (!client.value) return
   const { contentCount: _contentCount, ...fields } = updated
   client.value = { ...client.value, ...fields }
+}
+
+// Delete: cascades to the client's contents (the dialog shows how many).
+const deleteOpen = ref(false)
+const deleting = ref(false)
+const toast = useToast()
+
+async function deleteClient() {
+  if (!client.value) return
+  deleting.value = true
+  try {
+    const { deletedContents } = await $fetch<{ deletedContents: number }>(clientApiPath(client.value.id), { method: 'DELETE' })
+    toast.success('Müşteri silindi', deletedContents > 0 ? `${client.value.name} ve ${deletedContents} içerik silindi.` : `${client.value.name} silindi.`)
+    deleteOpen.value = false
+    await navigateTo('/clients')
+  }
+  catch (error) {
+    toast.error('Müşteri silinemedi', getApiErrorMessage(error))
+  }
+  finally {
+    deleting.value = false
+  }
 }
 
 const contentModalOpen = ref(false)
@@ -238,7 +260,7 @@ function onContentSaved() {
               aria-hidden="true"
             />
           </template>
-          Yeni içerik
+          Bu müşteriye içerik ekle
         </UiButton>
       </div>
 
@@ -255,21 +277,36 @@ function onContentSaved() {
             >
               Müşteri bilgileri
             </h2>
-            <UiButton
-              variant="ghost"
-              size="sm"
-              class="-my-1 -mr-2"
-              aria-label="Müşteri bilgilerini düzenle"
-              @click="clientModalOpen = true"
-            >
-              <template #icon>
-                <Pencil
-                  class="size-3.5"
-                  aria-hidden="true"
-                />
-              </template>
-              Düzenle
-            </UiButton>
+            <div class="-my-1 -mr-2 flex items-center">
+              <UiButton
+                variant="ghost"
+                size="sm"
+                aria-label="Müşteri bilgilerini düzenle"
+                @click="clientModalOpen = true"
+              >
+                <template #icon>
+                  <Pencil
+                    class="size-3.5"
+                    aria-hidden="true"
+                  />
+                </template>
+                Düzenle
+              </UiButton>
+              <UiButton
+                variant="ghost"
+                size="sm"
+                aria-label="Müşteriyi sil"
+                @click="deleteOpen = true"
+              >
+                <template #icon>
+                  <Trash2
+                    class="size-3.5"
+                    aria-hidden="true"
+                  />
+                </template>
+                Sil
+              </UiButton>
+            </div>
           </div>
           <dl class="mt-3 divide-y divide-ink-100 text-sm">
             <div class="flex justify-between gap-4 py-2.5">
@@ -463,6 +500,19 @@ function onContentSaved() {
         </section>
       </div>
     </template>
+
+    <UiConfirmDialog
+      v-if="client"
+      :open="deleteOpen"
+      title="Müşteri silinsin mi?"
+      :description="client.contentCount > 0
+        ? `${client.name} silinecek. Bu müşteriye bağlı ${client.contentCount} içerik de silinecek. Bu işlem geri alınamaz.`
+        : `${client.name} kalıcı olarak silinecek. Bu işlem geri alınamaz.`"
+      :confirm-label="client.contentCount > 0 ? `Müşteriyi ve ${client.contentCount} içeriği sil` : 'Müşteriyi sil'"
+      :loading="deleting"
+      @confirm="deleteClient"
+      @cancel="deleteOpen = false"
+    />
 
     <ClientFormModal
       :open="clientModalOpen"

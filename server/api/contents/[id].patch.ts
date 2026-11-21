@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     return await prisma.$transaction(async (tx) => {
       const current = await tx.content.findUnique({
         where: { id },
-        select: { status: true, publishedAt: true, clientId: true },
+        select: { status: true, publishedAt: true, clientId: true, type: true },
       })
 
       if (!current) {
@@ -26,12 +26,16 @@ export default defineEventHandler(async (event) => {
 
       const publishedAt = resolvePublishedAtOnUpdate(current, input.status)
       const statusChanged = input.status !== undefined && input.status !== current.status
+      const nextType = input.type ?? current.type
 
       return tx.content.update({
         where: { id },
         data: {
           ...input,
           ...(publishedAt !== undefined && { publishedAt }),
+          // Platform only applies to social media posts.
+          ...(nextType !== 'SOCIAL_POST' && { platform: null }),
+          ...(statusChanged && { statusChangedAt: new Date() }),
           // Every real status transition is recorded for the detail page timeline.
           ...(statusChanged && { statusChanges: { create: { fromStatus: current.status, toStatus: input.status! } } }),
         },

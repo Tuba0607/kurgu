@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
     const content = await prisma.content.create({
       data: {
         ...input,
+        // Platform only applies to social media posts.
+        platform: input.type === 'SOCIAL_POST' ? input.platform ?? null : null,
         publishedAt: resolvePublishedAtOnCreate(input.status),
         // The initial status is the first entry of the status history.
         statusChanges: { create: { fromStatus: null, toStatus: input.status } },

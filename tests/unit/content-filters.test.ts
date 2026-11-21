@@ -6,7 +6,7 @@ import {
 } from '../../utils/content-filters'
 import { applyQueryPatch } from '../../utils/query'
 
-const DEFAULTS = { search: '', status: '', clientId: '' }
+const DEFAULTS = { search: '', status: '', clientId: '', type: '' }
 
 describe('hasActiveContentFilters', () => {
   it('is false when every filter has its default value', () => {
@@ -42,7 +42,7 @@ describe('applyQueryPatch', () => {
 
 describe('content filter reset', () => {
   it('removes search, status, client and page but keeps unrelated params', () => {
-    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: '2', ref: 'dashboard' }
+    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', type: 'BLOG_POST', page: '2', ref: 'dashboard' }
     expect(applyQueryPatch(query, contentFilterResetPatch())).toEqual({ ref: 'dashboard' })
   })
 
@@ -64,7 +64,7 @@ describe('buildActiveFilterChips', () => {
 
   it('returns chips for every active filter in control order', () => {
     const chips = buildActiveFilterChips(
-      { search: '  koy ', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota' },
+      { search: '  koy ', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', type: '' },
       'Mavi Rota Turizm',
     )
     expect(chips).toEqual([
@@ -79,12 +79,21 @@ describe('buildActiveFilterChips', () => {
   })
 
   it('ignores whitespace-only search and unknown status values', () => {
-    expect(buildActiveFilterChips({ search: '   ', status: 'ARCHIVED', clientId: '' })).toEqual([])
+    expect(buildActiveFilterChips({ search: '   ', status: 'ARCHIVED', clientId: '', type: '' })).toEqual([])
   })
 
   it('removing one chip keeps the others (query patch for a single param)', () => {
-    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: '2', ref: 'dashboard' }
+    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', type: 'BLOG_POST', page: '2', ref: 'dashboard' }
     expect(applyQueryPatch(query, { status: null }))
-      .toEqual({ search: 'koy', clientId: 'seed_client_mavi_rota', page: '2', ref: 'dashboard' })
+      .toEqual({ search: 'koy', clientId: 'seed_client_mavi_rota', type: 'BLOG_POST', page: '2', ref: 'dashboard' })
+  })
+})
+
+describe('type filter', () => {
+  it('counts as an active filter and gets a chip after the client chip', () => {
+    expect(hasActiveContentFilters({ ...DEFAULTS, type: 'WEB_PAGE' })).toBe(true)
+    const chips = buildActiveFilterChips({ ...DEFAULTS, clientId: 'x', type: 'WEB_PAGE', status: 'DRAFT' }, 'Lina Kozmetik')
+    expect(chips.map(chip => chip.param)).toEqual(['clientId', 'type', 'status'])
+    expect(chips[1]).toMatchObject({ label: 'Web sayfası', removeLabel: 'Web sayfası filtresini kaldır' })
   })
 })

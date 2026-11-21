@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ArrowLeft, Pencil, SearchX } from 'lucide-vue-next'
+import { ArrowLeft, Clock, Pencil, SearchX, Trash2 } from 'lucide-vue-next'
 import {
-  CONTENT_STATUS_LABELS,
   CONTENT_TYPE_LABELS,
   type ContentStatusValue,
+  LONG_REVIEW_DAYS,
+  SOCIAL_PLATFORM_LABELS,
 } from '#shared/constants/content'
 import type { ContentDetail } from '~/types/api'
 
@@ -27,9 +28,13 @@ if (import.meta.server && isNotFound.value) {
   setResponseStatus(useRequestEvent()!, 404)
 }
 
-// Status changes are saved immediately; the picker reverts if the request fails.
+// Status changes are saved immediately (with "Geri al" in the toast); the picker
+// follows the saved status, so a failed request reverts it automatically.
 const selectedStatus = ref<ContentStatusValue>('DRAFT')
-const savingStatus = ref(false)
+const { changeStatus, pendingId } = useStatusChange((saved) => {
+  content.value = saved
+})
+const savingStatus = computed(() => pendingId.value !== null)
 
 watch(() => content.value?.status, (value) => {
   if (value) selectedStatus.value = value
@@ -37,21 +42,35 @@ watch(() => content.value?.status, (value) => {
 
 watch(selectedStatus, async (next) => {
   const current = content.value
-  if (!current || next === current.status || savingStatus.value) return
+  if (!current || next === current.status) return
+  const ok = await changeStatus(current.id, current.status, next)
+  if (!ok && content.value) selectedStatus.value = content.value.status
+})
 
-  savingStatus.value = true
+// "X gündür onay bekliyor"
+const reviewDays = computed(() => (content.value?.status === 'IN_REVIEW' ? daysSince(content.value.statusChangedAt) : null))
+
+// Delete with confirmation
+const router = useRouter()
+const deleteOpen = ref(false)
+const deleting = ref(false)
+
+async function deleteContent() {
+  if (!content.value) return
+  deleting.value = true
   try {
-    content.value = await $fetch<ContentDetail>(contentApiPath(current.id), { method: 'PATCH', body: { status: next } })
-    toast.success('Durum güncellendi', `İçerik “${CONTENT_STATUS_LABELS[next]}” durumuna alındı.`)
+    await $fetch(contentApiPath(content.value.id), { method: 'DELETE' })
+    toast.success('İçerik silindi', `“${content.value.title}” kalıcı olarak silindi.`)
+    deleteOpen.value = false
+    await router.push('/contents')
   }
-  catch (requestError) {
-    selectedStatus.value = current.status
-    toast.error('Durum güncellenemedi', getApiErrorMessage(requestError))
+  catch (error) {
+    toast.error('İçerik silinemedi', getApiErrorMessage(error))
   }
   finally {
-    savingStatus.value = false
+    deleting.value = false
   }
-})
+}
 
 const editOpen = ref(false)
 
@@ -164,9 +183,32 @@ function onSaved(updated: ContentDetail) {
           <div class="mb-3 flex flex-wrap items-center gap-3">
             <ContentStatusBadge :status="content.status" />
             <ContentTypeBadge :type="content.type" />
+            <span
+              v-if="reviewDays !== null"
+              class="inline-flex items-center gap-1.5 text-[13px] font-medium"
+              :class="reviewDays > LONG_REVIEW_DAYS ? 'text-amber-800' : 'text-ink-500'"
+            >
+              <Clock
+                class="size-3.5"
+                aria-hidden="true"
+              />
+              {{ reviewDays === 0 ? 'Bugün onaya gönderildi' : `${reviewDays} gündür onay bekliyor` }}
+            </span>
           </div>
         </template>
         <template #actions>
+          <UiButton
+            variant="ghost"
+            @click="deleteOpen = true"
+          >
+            <template #icon>
+              <Trash2
+                class="size-4"
+                aria-hidden="true"
+              />
+            </template>
+            Sil
+          </UiButton>
           <UiButton
             variant="secondary"
             @click="editOpen = true"
@@ -183,75 +225,91 @@ function onSaved(updated: ContentDetail) {
       </UiPageHeader>
 
       <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
-        <!-- Body -->
-        <section
-          class="card p-5 sm:p-6 xl:col-span-2"
-          aria-labelledby="content-body-title"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2
-              id="content-body-title"
-              class="text-sm font-semibold text-ink-900"
-            >
-              İçerik metni
-            </h2>
+        <div class="space-y-6 xl:col-span-2">
+          <!-- Body -->
+          <section
+            class="card p-5 sm:p-6"
+            aria-labelledby="content-body-title"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2
+                id="content-body-title"
+                class="text-sm font-semibold text-ink-900"
+              >
+                İçerik metni
+              </h2>
+              <div
+                v-if="content.body"
+                role="tablist"
+                aria-label="Metin görünümü"
+                class="inline-flex rounded-lg bg-ink-100 p-0.5"
+              >
+                <button
+                  v-for="(tab, index) in bodyTabs"
+                  :id="`content-body-tab-${tab.value}`"
+                  :key="tab.value"
+                  ref="bodyTabElements"
+                  type="button"
+                  role="tab"
+                  class="rounded-md px-3 py-1 text-[13px] font-medium transition-colors"
+                  :class="bodyView === tab.value ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'"
+                  :aria-selected="bodyView === tab.value"
+                  aria-controls="content-body-panel"
+                  :tabindex="bodyView === tab.value ? 0 : -1"
+                  @click="bodyView = tab.value"
+                  @keydown="onBodyTabKeydown($event, index)"
+                >
+                  {{ tab.label }}
+                </button>
+              </div>
+            </div>
             <div
               v-if="content.body"
-              role="tablist"
-              aria-label="Metin görünümü"
-              class="inline-flex rounded-lg bg-ink-100 p-0.5"
+              id="content-body-panel"
+              role="tabpanel"
+              :aria-labelledby="`content-body-tab-${bodyView}`"
+              class="mt-4"
             >
-              <button
-                v-for="(tab, index) in bodyTabs"
-                :id="`content-body-tab-${tab.value}`"
-                :key="tab.value"
-                ref="bodyTabElements"
-                type="button"
-                role="tab"
-                class="rounded-md px-3 py-1 text-[13px] font-medium transition-colors"
-                :class="bodyView === tab.value ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'"
-                :aria-selected="bodyView === tab.value"
-                aria-controls="content-body-panel"
-                :tabindex="bodyView === tab.value ? 0 : -1"
-                @click="bodyView = tab.value"
-                @keydown="onBodyTabKeydown($event, index)"
+              <ContentPreview
+                v-if="bodyView === 'preview'"
+                :content="content"
+              />
+              <p
+                v-else
+                class="whitespace-pre-line break-words text-[15px] leading-7 text-ink-700"
               >
-                {{ tab.label }}
+                {{ content.body }}
+              </p>
+            </div>
+            <div
+              v-else
+              class="mt-3 rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center text-sm text-ink-500"
+            >
+              Bu içerik için henüz metin eklenmemiş.
+              <button
+                type="button"
+                class="font-medium text-ink-600 hover:text-ink-800"
+                @click="editOpen = true"
+              >
+                Metin ekle
               </button>
             </div>
-          </div>
-          <div
-            v-if="content.body"
-            id="content-body-panel"
-            role="tabpanel"
-            :aria-labelledby="`content-body-tab-${bodyView}`"
-            class="mt-4"
+          </section>
+
+          <!-- Status history -->
+          <section
+            class="card p-5 sm:p-6"
+            aria-labelledby="content-history-title"
           >
-            <ContentPreview
-              v-if="bodyView === 'preview'"
-              :content="content"
-            />
-            <p
-              v-else
-              class="whitespace-pre-line break-words text-[15px] leading-7 text-ink-700"
+            <h2
+              id="content-history-title"
+              class="mb-4 text-sm font-semibold text-ink-900"
             >
-              {{ content.body }}
-            </p>
-          </div>
-          <div
-            v-else
-            class="mt-3 rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center text-sm text-ink-500"
-          >
-            Bu içerik için henüz metin eklenmemiş.
-            <button
-              type="button"
-              class="font-medium text-ink-600 hover:text-ink-800"
-              @click="editOpen = true"
-            >
-              Metin ekle
-            </button>
-          </div>
-        </section>
+              Durum geçmişi
+            </h2>
+            <ContentStatusTimeline :changes="content.statusChanges" />
+          </section>
+        </div>
 
         <div class="space-y-6">
           <!-- Status -->
@@ -312,6 +370,25 @@ function onSaved(updated: ContentDetail) {
                   {{ CONTENT_TYPE_LABELS[content.type] }}
                 </dd>
               </div>
+              <div
+                v-if="content.platform"
+                class="flex justify-between gap-4 py-2.5"
+              >
+                <dt class="text-ink-500">
+                  Platform
+                </dt>
+                <dd class="text-right font-medium text-ink-900">
+                  {{ SOCIAL_PLATFORM_LABELS[content.platform] }}
+                </dd>
+              </div>
+              <div class="flex justify-between gap-4 py-2.5">
+                <dt class="text-ink-500">
+                  Planlanan yayın
+                </dt>
+                <dd class="text-right font-medium tabular-nums text-ink-900">
+                  {{ content.scheduledAt ? formatDate(content.scheduledAt) : 'Planlanmadı' }}
+                </dd>
+              </div>
               <div class="flex justify-between gap-4 py-2.5">
                 <dt class="text-ink-500">
                   Yayın tarihi
@@ -341,6 +418,17 @@ function onSaved(updated: ContentDetail) {
         </div>
       </div>
     </template>
+
+    <UiConfirmDialog
+      v-if="content"
+      :open="deleteOpen"
+      title="İçerik silinsin mi?"
+      :description="`“${content.title}” ve durum geçmişi kalıcı olarak silinecek. Bu işlem geri alınamaz.`"
+      confirm-label="İçeriği sil"
+      :loading="deleting"
+      @confirm="deleteContent"
+      @cancel="deleteOpen = false"
+    />
 
     <ContentFormModal
       :open="editOpen"

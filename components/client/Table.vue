@@ -98,10 +98,8 @@ defineProps<{ items: ClientListItem[] }>()
                 :title="client.industry ?? undefined"
               >{{ client.industry ?? EMPTY_VALUE }}</span>
             </td>
-            <td class="px-3 py-3.5 text-right">
-              <span class="inline-flex min-w-8 justify-center rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium tabular-nums text-ink-700">
-                {{ client.contentCount }}
-              </span>
+            <td class="px-3 py-3.5">
+              <ContentStatusBar :counts="client.statusCounts" />
             </td>
             <td class="whitespace-nowrap px-3 py-3.5 tabular-nums text-ink-500">
               {{ formatDate(client.createdAt) }}
@@ -149,9 +147,10 @@ defineProps<{ items: ClientListItem[] }>()
               {{ client.contactName }}
             </p>
           </div>
-          <span class="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium tabular-nums text-ink-700">
-            {{ client.contentCount }} içerik
-          </span>
+          <ContentStatusBar
+            class="shrink-0"
+            :counts="client.statusCounts"
+          />
           <ChevronRight
             class="size-4 shrink-0 text-ink-300"
             aria-hidden="true"

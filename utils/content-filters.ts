@@ -1,9 +1,9 @@
-import { CONTENT_STATUS_LABELS, type ContentStatusValue } from '#shared/constants/content'
+import { CONTENT_STATUS_LABELS, CONTENT_TYPE_LABELS, type ContentStatusValue, type ContentTypeValue } from '#shared/constants/content'
 
 // Filters of the contents list. Their default value is "empty" (no search,
 // all statuses, all clients); anything else counts as an active filter.
 
-export const CONTENT_FILTER_PARAMS = ['search', 'status', 'clientId'] as const
+export const CONTENT_FILTER_PARAMS = ['search', 'status', 'clientId', 'type'] as const
 export type ContentFilterParam = (typeof CONTENT_FILTER_PARAMS)[number]
 
 export type ContentFilterState = Record<ContentFilterParam, string>
@@ -37,6 +37,10 @@ export function buildActiveFilterChips(filters: ContentFilterState, clientName?:
     const name = clientName ?? 'Seçili müşteri'
     chips.push({ param: 'clientId', label: name, removeLabel: `${name} filtresini kaldır` })
   }
+  if (filters.type && filters.type in CONTENT_TYPE_LABELS) {
+    const label = CONTENT_TYPE_LABELS[filters.type as ContentTypeValue]
+    chips.push({ param: 'type', label, removeLabel: `${label} filtresini kaldır` })
+  }
   if (filters.status && filters.status in CONTENT_STATUS_LABELS) {
     const label = CONTENT_STATUS_LABELS[filters.status as ContentStatusValue]
     chips.push({ param: 'status', label, removeLabel: `${label} filtresini kaldır` })
@@ -46,7 +50,7 @@ export function buildActiveFilterChips(filters: ContentFilterState, clientName?:
 
 /** Query patch that resets every content filter to its default (and the page back to 1). */
 export function contentFilterResetPatch(): Record<ContentFilterParam | 'page', null> {
-  return { search: null, status: null, clientId: null, page: null }
+  return { search: null, status: null, clientId: null, type: null, page: null }
 }
 
 /** '' stands for the "Tümü" (all) tab. */

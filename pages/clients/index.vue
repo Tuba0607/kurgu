@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { SearchX, UserPlus, Users } from 'lucide-vue-next'
+import { CLIENT_SORT_LABELS, CLIENT_SORTS, type ClientSortValue } from '#shared/schemas/client'
 import type { ClientListItem } from '~/types/api'
 
 useHead({ title: 'Müşteriler' })
 
 const { input: searchInput, applied: search } = useDebouncedQuerySearch('search')
 
+const sortParam = useRouteQueryValue('sort')
+const updateQuery = useQueryUpdater({ history: 'push' })
+const sort = computed<ClientSortValue>(() => ((CLIENT_SORTS as readonly string[]).includes(sortParam.value) ? sortParam.value as ClientSortValue : 'newest'))
+const sortOptions = CLIENT_SORTS.map(value => ({ value, label: CLIENT_SORT_LABELS[value] }))
+const selectedSort = computed({
+  get: () => sort.value as string,
+  set: value => updateQuery({ sort: value === 'newest' ? null : value }),
+})
+
 const { data: clients, status, error, refresh } = await useFetch('/api/clients', {
-  query: computed(() => ({ search: search.value || undefined })),
+  query: computed(() => ({ search: search.value || undefined, sort: sort.value === 'newest' ? undefined : sort.value })),
   lazy: true,
 })
 
@@ -51,14 +61,22 @@ function onSaved(client: ClientListItem) {
           label="Firma adına göre ara"
           placeholder="Firma adına göre ara…"
         />
-        <p
-          v-if="clients"
-          class="text-sm text-ink-500"
-          aria-live="polite"
-        >
-          <span class="font-medium tabular-nums text-ink-900">{{ clients.length }}</span>
-          {{ search ? 'sonuç' : 'müşteri' }}
-        </p>
+        <div class="flex items-center gap-4">
+          <p
+            v-if="clients"
+            class="whitespace-nowrap text-sm text-ink-500"
+            aria-live="polite"
+          >
+            <span class="font-medium tabular-nums text-ink-900">{{ clients.length }}</span>
+            {{ search ? 'sonuç' : 'müşteri' }}
+          </p>
+          <UiListbox
+            v-model="selectedSort"
+            class="w-full sm:w-52"
+            label="Sıralama"
+            :options="sortOptions"
+          />
+        </div>
       </div>
 
       <UiErrorState

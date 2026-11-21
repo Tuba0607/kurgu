@@ -19,12 +19,17 @@ interface FocusTrapOptions {
  * Keeps keyboard focus inside `container` while `active` is true, closes on
  * Escape and restores focus to the previously focused element afterwards.
  */
+// Only the most recently opened trap handles keys, so a dialog opened on top of
+// another dialog (e.g. a confirmation) does not close both with one Escape.
+const trapStack: symbol[] = []
+
 export function useFocusTrap(
   container: Ref<HTMLElement | null>,
   active: Ref<boolean>,
   options: FocusTrapOptions = {},
 ) {
   let previouslyFocused: HTMLElement | null = null
+  const token = Symbol('focus-trap')
 
   function getFocusableElements(): HTMLElement[] {
     if (!container.value) return []
@@ -33,6 +38,7 @@ export function useFocusTrap(
   }
 
   function onKeydown(event: KeyboardEvent) {
+    if (trapStack.at(-1) !== token) return
     if (event.key === 'Escape') {
       event.stopPropagation()
       options.onEscape?.()
@@ -63,6 +69,7 @@ export function useFocusTrap(
 
   function activate() {
     previouslyFocused = document.activeElement as HTMLElement | null
+    trapStack.push(token)
     document.addEventListener('keydown', onKeydown)
     nextTick(() => {
       const target = options.getInitialFocus?.() ?? getFocusableElements()[0] ?? container.value
@@ -72,6 +79,8 @@ export function useFocusTrap(
 
   function deactivate() {
     document.removeEventListener('keydown', onKeydown)
+    const index = trapStack.indexOf(token)
+    if (index !== -1) trapStack.splice(index, 1)
     if (previouslyFocused?.isConnected) previouslyFocused.focus()
     previouslyFocused = null
   }

@@ -164,6 +164,7 @@ async function main() {
             scheduledAt: content.scheduled !== undefined ? at(content.scheduled, 10) : null,
             publishedAt,
             createdAt,
+            statusChangedAt: history.at(-1)!.changedAt,
             updatedAt: history.at(-1)!.changedAt,
             statusChanges: { create: history },
           },

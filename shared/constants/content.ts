@@ -22,6 +22,37 @@ export const CONTENT_TYPE_SHORT_LABELS: Record<ContentTypeValue, string> = {
   WEB_PAGE: 'Web sayfası',
 }
 
+export const SOCIAL_PLATFORMS = ['INSTAGRAM', 'LINKEDIN', 'X', 'FACEBOOK'] as const
+export type SocialPlatformValue = (typeof SOCIAL_PLATFORMS)[number]
+
+export const SOCIAL_PLATFORM_LABELS: Record<SocialPlatformValue, string> = {
+  INSTAGRAM: 'Instagram',
+  LINKEDIN: 'LinkedIn',
+  X: 'X',
+  FACEBOOK: 'Facebook',
+}
+
+/** Caption / post length limits per platform (characters). */
+export const SOCIAL_PLATFORM_CHAR_LIMITS: Record<SocialPlatformValue, number> = {
+  INSTAGRAM: 2200,
+  LINKEDIN: 3000,
+  X: 280,
+  FACEBOOK: 63206,
+}
+
+/** Sort options of the content list. */
+export const CONTENT_SORTS = ['newest', 'scheduled', 'waiting'] as const
+export type ContentSortValue = (typeof CONTENT_SORTS)[number]
+
+export const CONTENT_SORT_LABELS: Record<ContentSortValue, string> = {
+  newest: 'Son eklenen',
+  scheduled: 'Yayın tarihi',
+  waiting: 'En uzun süredir bekleyen',
+}
+
+/** Days after which a content waiting for approval is highlighted. */
+export const LONG_REVIEW_DAYS = 5
+
 export const CONTENT_STATUS_LABELS: Record<ContentStatusValue, string> = {
   DRAFT: 'Taslak',
   IN_REVIEW: 'Onay bekliyor',

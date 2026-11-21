@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Users } from 'lucide-vue-next'
-import type { ContentStatusValue, ContentTypeValue } from '#shared/constants/content'
+import { SOCIAL_PLATFORM_LABELS, SOCIAL_PLATFORMS, type ContentStatusValue, type ContentTypeValue, type SocialPlatformValue } from '#shared/constants/content'
 import { contentCreateSchema, contentUpdateSchema } from '#shared/schemas/content'
 import { toFieldErrors } from '#shared/utils/validation'
 import type { ClientListItem, ContentDetail } from '~/types/api'
@@ -39,8 +39,37 @@ const form = reactive({
   clientId: '',
   type: '' as ContentTypeValue | '',
   status: 'DRAFT' as ContentStatusValue,
+  platform: '' as SocialPlatformValue | '',
+  scheduledAt: '',
   body: '',
 })
+
+const platformOptions = SOCIAL_PLATFORMS.map(value => ({ value, label: SOCIAL_PLATFORM_LABELS[value] }))
+
+/** "YYYY-MM-DD" in local time for a date input. */
+function toDateInputValue(value: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  const pad = (number: number) => String(number).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+// Unsaved changes: compare with the state right after opening / loading.
+const initialSnapshot = ref('')
+const snapshot = () => JSON.stringify(form)
+const isDirty = computed(() => initialSnapshot.value !== '' && snapshot() !== initialSnapshot.value)
+const discardOpen = ref(false)
+
+function requestClose() {
+  if (submitting.value) return
+  if (isDirty.value) discardOpen.value = true
+  else emit('close')
+}
+
+function discardChanges() {
+  discardOpen.value = false
+  emit('close')
+}
 
 const { errors, setErrors, clearErrors } = useFormErrors(form, formElement)
 
@@ -53,9 +82,12 @@ function resetForm() {
     clientId: props.defaultClientId ?? '',
     type: '',
     status: 'DRAFT',
+    platform: '',
+    scheduledAt: '',
     body: '',
   })
   clearErrors()
+  initialSnapshot.value = snapshot()
 }
 
 async function loadClients() {
@@ -81,9 +113,12 @@ async function loadContent() {
       clientId: content.clientId,
       type: content.type,
       status: content.status,
+      platform: content.platform ?? '',
+      scheduledAt: toDateInputValue(content.scheduledAt),
       body: content.body ?? '',
     })
     clearErrors()
+    initialSnapshot.value = snapshot()
     loadState.value = 'ready'
     // The form is rendered only after loading, so move focus to its first field now.
     await nextTick()
@@ -109,6 +144,8 @@ async function submit() {
     ...form,
     type: form.type || undefined,
     clientId: form.clientId || undefined,
+    platform: form.type === 'SOCIAL_POST' ? form.platform || null : null,
+    scheduledAt: form.scheduledAt || null,
   }
   const result = (isEdit.value ? contentUpdateSchema : contentCreateSchema).safeParse(payload)
   if (!result.success) {
@@ -144,7 +181,7 @@ async function submit() {
     :description="isEdit ? 'İçerik bilgilerini ve durumunu güncelleyin.' : 'Bir müşteriye bağlı yeni içerik oluşturun.'"
     size="lg"
     :persistent="submitting"
-    @close="emit('close')"
+    @close="requestClose"
   >
     <!-- Edit mode: loading / error states -->
     <div
@@ -217,14 +254,15 @@ async function submit() {
         :error="errors.clientId"
         required
       >
-        <UiSelect
+        <UiSearchSelect
           :id="field.id"
           v-model="form.clientId"
           :invalid="field.invalid"
           :aria-describedby="field.describedBy"
           aria-required="true"
           :options="clientOptions"
-          :placeholder="clientsLoading ? 'Müşteriler yükleniyor…' : 'Müşteri seçin'"
+          :placeholder="clientsLoading ? 'Müşteriler yükleniyor…' : 'Müşteri ara veya seçin'"
+          empty-text="Bu adla bir müşteri yok"
           :disabled="clientsLoading"
         />
       </UiFormField>
@@ -234,6 +272,40 @@ async function submit() {
         legend="İçerik türü"
         :error="errors.type"
       />
+
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <UiFormField
+          v-if="form.type === 'SOCIAL_POST'"
+          v-slot="field"
+          label="Platform"
+          :error="errors.platform"
+          optional
+        >
+          <UiSelect
+            :id="field.id"
+            v-model="form.platform"
+            :invalid="field.invalid"
+            :aria-describedby="field.describedBy"
+            :options="platformOptions"
+            placeholder="Platform seçin"
+          />
+        </UiFormField>
+        <UiFormField
+          v-slot="field"
+          label="Planlanan yayın tarihi"
+          :error="errors.scheduledAt"
+          optional
+          :class="form.type !== 'SOCIAL_POST' && 'sm:col-span-2'"
+        >
+          <UiInput
+            :id="field.id"
+            v-model="form.scheduledAt"
+            type="date"
+            :invalid="field.invalid"
+            :aria-describedby="field.describedBy"
+          />
+        </UiFormField>
+      </div>
 
       <div>
         <ContentStatusPicker
@@ -276,7 +348,7 @@ async function submit() {
       <UiButton
         variant="secondary"
         :disabled="submitting"
-        @click="emit('close')"
+        @click="requestClose"
       >
         Vazgeç
       </UiButton>
@@ -291,4 +363,14 @@ async function submit() {
       </UiButton>
     </template>
   </UiModal>
+
+  <UiConfirmDialog
+    :open="discardOpen"
+    title="Kaydedilmemiş değişiklikler var"
+    description="Formu kapatırsanız yaptığınız değişiklikler kaybolacak."
+    confirm-label="Değişiklikleri at"
+    cancel-label="Düzenlemeye dön"
+    @confirm="discardChanges"
+    @cancel="discardOpen = false"
+  />
 </template>

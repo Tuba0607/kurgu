@@ -24,6 +24,9 @@ export const contentListSelect = {
   title: true,
   type: true,
   status: true,
+  platform: true,
+  scheduledAt: true,
+  statusChangedAt: true,
   publishedAt: true,
   createdAt: true,
   updatedAt: true,
@@ -34,6 +37,10 @@ export const contentDetailSelect = {
   ...contentListSelect,
   body: true,
   clientId: true,
+  statusChanges: {
+    select: { id: true, fromStatus: true, toStatus: true, changedAt: true },
+    orderBy: { changedAt: 'asc' as const },
+  },
 } satisfies Prisma.ContentSelect
 
 /** Deterministic newest-first ordering, usable for both clients and contents. */

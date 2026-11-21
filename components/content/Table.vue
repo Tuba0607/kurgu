@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { Pencil } from 'lucide-vue-next'
+import type { ContentStatusValue } from '#shared/constants/content'
 import type { ContentListItem } from '~/types/api'
 
 withDefaults(defineProps<{
   items: ContentListItem[]
   showClient?: boolean
+  /** Id of the content whose status is being saved (its menu is disabled). */
+  pendingId?: string | null
 }>(), {
   showClient: true,
+  pendingId: null,
 })
 
-defineEmits<{ edit: [id: string] }>()
+defineEmits<{
+  'edit': [id: string]
+  'status-change': [content: ContentListItem, status: ContentStatusValue]
+}>()
 </script>
 
 <template>
@@ -95,7 +102,12 @@ defineEmits<{ edit: [id: string] }>()
               <ContentTypeBadge :type="content.type" />
             </td>
             <td class="px-3 py-3.5">
-              <ContentStatusBadge :status="content.status" />
+              <ContentStatusMenu
+                :status="content.status"
+                :label="content.title"
+                :disabled="pendingId === content.id"
+                @change="$emit('status-change', content, $event)"
+              />
             </td>
             <td class="whitespace-nowrap px-3 py-3.5 tabular-nums text-ink-500">
               {{ formatDate(content.createdAt) }}
@@ -139,7 +151,12 @@ defineEmits<{ edit: [id: string] }>()
             {{ formatDate(content.createdAt) }}
           </p>
           <div class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <ContentStatusBadge :status="content.status" />
+            <ContentStatusMenu
+              :status="content.status"
+              :label="content.title"
+              :disabled="pendingId === content.id"
+              @change="$emit('status-change', content, $event)"
+            />
             <ContentTypeBadge :type="content.type" />
           </div>
         </div>

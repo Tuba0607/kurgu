@@ -588,3 +588,84 @@ describe('Clients API: update (PATCH)', () => {
     expect(malformed.status).toBe(400)
   })
 })
+
+describe('P1: status history, filters, metrics and deletion', () => {
+  it('records the initial status and every status change', async () => {
+    const client = await createTestClient()
+    const content = await createTestContent(client.id, { status: 'DRAFT' })
+    await api('PATCH', `/api/contents/${content.id}`, { body: { status: 'IN_REVIEW' } })
+    await api('PATCH', `/api/contents/${content.id}`, { body: { title: `${TEST_MARKER} Yalnızca başlık` } })
+    const { body } = await api('PATCH', `/api/contents/${content.id}`, { body: { status: 'PUBLISHED' } })
+
+    expect(body.statusChanges.map((change: Json) => [change.fromStatus, change.toStatus])).toEqual([
+      [null, 'DRAFT'],
+      ['DRAFT', 'IN_REVIEW'],
+      ['IN_REVIEW', 'PUBLISHED'],
+    ])
+    expect(new Date(body.statusChangedAt).getTime()).toBeGreaterThan(Date.now() - 60_000)
+  })
+
+  it('stores platform only for social posts and accepts a planned date', async () => {
+    const client = await createTestClient()
+    const social = await createTestContent(client.id, { type: 'SOCIAL_POST', platform: 'X', scheduledAt: '2030-01-15' })
+    expect(social).toMatchObject({ platform: 'X' })
+    expect(social.scheduledAt.slice(0, 10)).toBe('2030-01-15')
+
+    const blog = await createTestContent(client.id, { type: 'BLOG_POST', platform: 'X' })
+    expect(blog.platform).toBeNull()
+
+    const invalid = await api('POST', '/api/contents', { body: { title: `${TEST_MARKER} x`, type: 'SOCIAL_POST', clientId: client.id, platform: 'TIKTOK', scheduledAt: '15.01.2030' } })
+    expect(invalid.status).toBe(422)
+    expect(Object.keys(invalid.body.data.fieldErrors).sort()).toEqual(['platform', 'scheduledAt'])
+  })
+
+  it('filters by type, sorts and returns per-status tab counts', async () => {
+    const { body } = await api('GET', '/api/contents?type=WEB_PAGE&pageSize=50')
+    expect(body.items.length).toBeGreaterThan(0)
+    expect(body.items.every((content: Json) => content.type === 'WEB_PAGE')).toBe(true)
+    const tabTotal = Object.values(body.statusCounts as Record<string, number>).reduce((a, b) => a + b, 0)
+    expect(tabTotal).toBe(body.total)
+
+    const waiting = await api('GET', '/api/contents?status=IN_REVIEW&sort=waiting&pageSize=50')
+    const times = waiting.body.items.map((content: Json) => new Date(content.statusChangedAt).getTime())
+    expect(times).toEqual([...times].sort((a, b) => a - b))
+
+    const invalid = await api('GET', '/api/contents?type=VIDEO&sort=random')
+    expect(invalid.status).toBe(400)
+  })
+
+  it('returns the dashboard action metrics', async () => {
+    const { body } = await api('GET', '/api/dashboard')
+    expect(body.review.total).toBe(body.statusCounts.IN_REVIEW)
+    expect(body.review.longWaiting).toBeLessThanOrEqual(body.review.total)
+    expect(body.schedule).toEqual({ dueThisWeek: expect.any(Number), overdue: expect.any(Number) })
+    expect(body.addedLastWeek).toEqual(expect.any(Number))
+  })
+
+  it('lists industries and client status counts', async () => {
+    const industries = await api('GET', '/api/industries')
+    expect(industries.body).toEqual([...industries.body].sort((a: string, b: string) => a.localeCompare(b, 'tr-TR')))
+    const clients = await api('GET', '/api/clients?sort=name')
+    const names = clients.body.map((client: Json) => client.name)
+    expect(names).toEqual([...names].sort((a: string, b: string) => a.localeCompare(b, 'tr-TR')))
+    expect(clients.body[0].statusCounts).toEqual({ DRAFT: expect.any(Number), IN_REVIEW: expect.any(Number), PUBLISHED: expect.any(Number) })
+  })
+
+  it('deletes a content and returns 404 afterwards', async () => {
+    const client = await createTestClient()
+    const content = await createTestContent(client.id)
+    expect((await api('DELETE', `/api/contents/${content.id}`)).status).toBe(204)
+    expect((await api('GET', `/api/contents/${content.id}`)).status).toBe(404)
+    expect((await api('DELETE', `/api/contents/${content.id}`)).status).toBe(404)
+  })
+
+  it('deletes a client together with its contents and reports how many', async () => {
+    const client = await createTestClient()
+    await createTestContent(client.id)
+    await createTestContent(client.id)
+    const { status, body } = await api('DELETE', `/api/clients/${client.id}`)
+    expect(status).toBe(200)
+    expect(body).toEqual({ deletedContents: 2 })
+    expect(await testPrisma.content.count({ where: { clientId: client.id } })).toBe(0)
+  })
+})

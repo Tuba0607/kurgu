@@ -102,9 +102,9 @@ describe('clientCreateSchema', () => {
 
 describe('clientListQuerySchema', () => {
   it('trims search and drops empty values', () => {
-    expect(clientListQuerySchema.parse({ search: '  kahve ' })).toEqual({ search: 'kahve' })
-    expect(clientListQuerySchema.parse({ search: '' })).toEqual({ search: undefined })
-    expect(clientListQuerySchema.parse({})).toEqual({ search: undefined })
+    expect(clientListQuerySchema.parse({ search: '  kahve ' })).toEqual({ search: 'kahve', sort: 'newest' })
+    expect(clientListQuerySchema.parse({ search: '' })).toEqual({ search: undefined, sort: 'newest' })
+    expect(clientListQuerySchema.parse({})).toEqual({ search: undefined, sort: 'newest' })
   })
 
   it('rejects overly long or repeated search params', () => {

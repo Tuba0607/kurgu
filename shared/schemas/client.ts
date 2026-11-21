@@ -57,8 +57,20 @@ export const clientUpdateSchema = clientCreateSchema
     error: 'Güncellenecek en az bir alan gönderiniz.',
   })
 
+export const CLIENT_SORTS = ['newest', 'name', 'contents'] as const
+export type ClientSortValue = (typeof CLIENT_SORTS)[number]
+export const CLIENT_SORT_LABELS: Record<ClientSortValue, string> = {
+  newest: 'Son eklenen',
+  name: 'Firma adı (A–Z)',
+  contents: 'En çok içerik',
+}
+
 export const clientListQuerySchema = z.object({
   search: searchSchema,
+  sort: z.preprocess(
+    value => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.enum(CLIENT_SORTS, { error: 'Geçersiz sıralama.' }).default('newest'),
+  ),
 })
 
 export type ClientCreateInput = z.output<typeof clientCreateSchema>
