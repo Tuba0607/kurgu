@@ -38,7 +38,7 @@ interface Option { value: string, label: string, isNew: boolean }
 // filters once the user starts typing (so an existing value is never "lost").
 const filtering = ref(false)
 
-const options = computed<Option[]>(() => {
+const allOptions = computed<Option[]>(() => {
   const query = filtering.value ? turkishKey(model.value) : ''
   const matches = props.suggestions
     .filter(item => !query || turkishKey(item).includes(query))
@@ -52,17 +52,23 @@ const options = computed<Option[]>(() => {
   return matches
 })
 
-const showList = computed(() => isOpen.value && options.value.length > 0)
 const inline = usePhoneLayout()
+// Phones: no inner scroll, so long lists are cut to the first matches (see INLINE_LIST_LIMIT).
+const options = computed(() => (inline.value ? allOptions.value.slice(0, INLINE_LIST_LIMIT) : allOptions.value))
+const hasMore = computed(() => inline.value && allOptions.value.length > INLINE_LIST_LIMIT)
+
+const showList = computed(() => isOpen.value && options.value.length > 0)
 // Desktop: rendered in <body> with fixed positioning, so it never makes the modal body scroll.
 const { style: floatingStyle } = useFloating(field, computed(() => showList.value && !inline.value), { maxHeight: 256 })
 
-watch(showList, (visible) => {
+watch([showList, () => options.value.length], ([visible]) => {
   if (visible && inline.value) revealInlineList(field.value)
 })
 
+let reopenGuardUntil = 0
+
 function open() {
-  if (isOpen.value) return
+  if (isOpen.value || Date.now() < reopenGuardUntil) return
   filtering.value = false
   isOpen.value = true
   // Highlight (and scroll to) the current value
@@ -76,6 +82,7 @@ function close() {
 
 function select(option: Option) {
   model.value = option.value
+  reopenGuardUntil = Date.now() + REOPEN_GUARD_MS
   close()
 }
 
@@ -166,8 +173,8 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
         v-show="showList"
         :id="listboxId"
         role="listbox"
-        class="overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1"
-        :class="inline ? 'mt-1 max-h-[228px] w-full' : 'z-[70] shadow-popover'"
+        class="rounded-xl border border-ink-200 bg-surface p-1"
+        :class="inline ? 'mt-1 w-full' : 'z-[70] overflow-y-auto overscroll-contain shadow-popover'"
         :style="inline ? undefined : floatingStyle"
       >
         <li
@@ -178,7 +185,8 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
           :aria-selected="index === activeIndex"
           class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
           :class="[index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700', inline ? 'min-h-11 text-base' : 'text-sm']"
-          @mousedown.prevent="select(option)"
+          @mousedown.prevent
+          @click="select(option)"
           @mousemove="activeIndex = index"
         >
           <Plus
@@ -192,6 +200,13 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
             class="size-4 shrink-0 text-ink-900"
             aria-hidden="true"
           />
+        </li>
+        <li
+          v-if="hasMore"
+          role="presentation"
+          class="px-3 py-2 text-sm text-ink-500"
+        >
+          Aramayı daraltmak için yazın
         </li>
       </ul>
     </Teleport>

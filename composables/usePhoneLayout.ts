@@ -18,15 +18,43 @@ export function usePhoneLayout() {
 }
 
 /**
- * Scrolls a field (label, control and its inline list) into the visible area of its
- * scroll container; when the whole field does not fit, the control and its list
- * (`element`) are kept visible instead of the label.
+ * Inline (phone) lists show at most this many matches, with a hint to keep typing.
+ * They have no inner scroll: on iOS a finger on a scroll area nested inside the
+ * dialog's scroll area moves the dialog, so the list could never be scrolled.
+ */
+export const INLINE_LIST_LIMIT = 8
+
+/**
+ * After a selection the list collapses and the page moves under the finger; iOS then
+ * delivers the tap's synthetic click to whatever is there now (often the input,
+ * which would reopen the list). Opening is ignored for this long after a selection.
+ */
+export const REOPEN_GUARD_MS = 500
+
+const EDGE = 12
+
+/**
+ * Scrolls the dialog body so an inline list is fully visible above the footer,
+ * together with its label when everything fits. When the list is taller than the
+ * visible area, the input is placed at the top and the rest is reached by scrolling
+ * the dialog itself.
  */
 export async function revealInlineList(element: HTMLElement | null | undefined) {
   await nextTick()
   if (!element) return
+  const container = element.parentElement?.closest<HTMLElement>('.overflow-y-auto')
+  if (!container) {
+    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    return
+  }
+  const view = container.getBoundingClientRect()
+  const room = view.height - 2 * EDGE
   const field = element.closest<HTMLElement>('[data-form-field]')
-  const container = element.closest<HTMLElement>('.overflow-y-auto')
-  const fits = !!field && !!container && field.offsetHeight <= container.clientHeight
-  ;(fits ? field : element).scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  const target = field && field.getBoundingClientRect().height <= room ? field : element
+  const rect = target.getBoundingClientRect()
+  let delta = 0
+  if (rect.height > room) delta = rect.top - (view.top + EDGE) // input at the top
+  else if (rect.bottom > view.bottom - EDGE) delta = rect.bottom - (view.bottom - EDGE) // last option above the footer
+  else if (rect.top < view.top + EDGE) delta = rect.top - (view.top + EDGE)
+  if (delta) container.scrollBy({ top: delta, behavior: 'smooth' })
 }

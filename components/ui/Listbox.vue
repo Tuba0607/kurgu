@@ -51,8 +51,9 @@ const activeIndex = ref(-1)
 const placement = ref<'bottom' | 'top'>('bottom')
 const position = ref({ left: 0, width: 0, offset: 0, maxHeight: props.maxHeight })
 
-// Phones: the list opens inside the form flow (pushing the fields below down), at most
-// 5 rows tall, and is scrolled into view with its trigger; desktop keeps the floating list.
+// Phones: the list opens inside the form flow (pushing the fields below down), without an
+// inner scroll, and is scrolled into view above the footer; desktop keeps the floating list.
+// (No item limit here: a listbox has no search field to narrow it down.)
 const inline = usePhoneLayout()
 
 const selectedIndex = computed(() => props.options.findIndex(option => option.value === model.value))
@@ -116,8 +117,10 @@ function removeListeners() {
   document.removeEventListener('pointerdown', onPointerDownOutside, true)
 }
 
+let reopenGuardUntil = 0
+
 function open(initialIndex = selectedIndex.value >= 0 ? selectedIndex.value : 0) {
-  if (isOpen.value) return
+  if (isOpen.value || Date.now() < reopenGuardUntil) return
   updatePosition()
   isOpen.value = true
   addListeners()
@@ -136,6 +139,7 @@ function select(index: number) {
   const option = props.options[index]
   if (!option) return
   model.value = option.value
+  reopenGuardUntil = Date.now() + REOPEN_GUARD_MS
   close()
   trigger.value?.focus()
 }
@@ -252,8 +256,8 @@ onBeforeUnmount(() => {
         role="listbox"
         :aria-label="label"
         tabindex="-1"
-        class="overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1"
-        :class="inline ? 'mt-1 max-h-[228px] w-full' : 'fixed z-[70] shadow-popover'"
+        class="rounded-xl border border-ink-200 bg-surface p-1"
+        :class="inline ? 'mt-1 w-full' : 'fixed z-[70] overflow-y-auto overscroll-contain shadow-popover'"
         :style="inline ? undefined : listStyle"
         :data-placement="placement"
         @mousedown.prevent

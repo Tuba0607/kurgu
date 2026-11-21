@@ -31,14 +31,12 @@ const optionId = (index: number) => `${baseId}-option-${index}`
 const field = ref<HTMLElement | null>(null)
 const query = ref('')
 const isOpen = ref(false)
-// Rendered in <body> with fixed positioning: never makes the modal body scroll.
 const inline = usePhoneLayout()
-// Desktop: floating list in <body>. Phones: inside the form flow, at most 5 rows, scrolled into view.
+// Desktop: floating list in <body> (never makes the modal body scroll).
+// Phones: inside the form flow, scrolled into view above the footer.
 const { style: floatingStyle } = useFloating(field, computed(() => isOpen.value && !inline.value), { maxHeight: 256 })
 
-watch(isOpen, (open) => {
-  if (open && inline.value) revealInlineList(field.value)
-})
+let reopenGuardUntil = 0
 const activeIndex = ref(-1)
 
 const selectedLabel = computed(() => props.options.find(option => option.value === model.value)?.label ?? '')
@@ -46,15 +44,22 @@ watch(selectedLabel, (label) => {
   if (!isOpen.value) query.value = label
 }, { immediate: true })
 
-const filtered = computed(() => {
+const matches = computed(() => {
   const key = turkishKey(query.value)
   // Show everything while the text still equals the current selection.
   if (!key || query.value === selectedLabel.value) return props.options
   return props.options.filter(option => turkishKey(option.label).includes(key))
 })
+// Phones: no inner scroll, so long lists are cut to the first matches (see INLINE_LIST_LIMIT).
+const filtered = computed(() => (inline.value ? matches.value.slice(0, INLINE_LIST_LIMIT) : matches.value))
+const hasMore = computed(() => inline.value && matches.value.length > INLINE_LIST_LIMIT)
+
+watch([isOpen, () => filtered.value.length], ([open]) => {
+  if (open && inline.value) revealInlineList(field.value)
+})
 
 function open() {
-  if (isOpen.value) return
+  if (isOpen.value || Date.now() < reopenGuardUntil) return
   isOpen.value = true
   activeIndex.value = Math.max(0, filtered.value.findIndex(option => option.value === model.value))
 }
@@ -67,6 +72,7 @@ function close() {
 
 function select(option: Option) {
   model.value = option.value
+  reopenGuardUntil = Date.now() + REOPEN_GUARD_MS
   query.value = option.label
   isOpen.value = false
   activeIndex.value = -1
@@ -151,8 +157,8 @@ watch(activeIndex, async (index) => {
         v-show="isOpen"
         :id="listboxId"
         role="listbox"
-        class="overflow-y-auto overscroll-contain rounded-xl border border-ink-200 bg-surface p-1"
-        :class="inline ? 'mt-1 max-h-[228px] w-full' : 'z-[70] shadow-popover'"
+        class="rounded-xl border border-ink-200 bg-surface p-1"
+        :class="inline ? 'mt-1 w-full' : 'z-[70] overflow-y-auto overscroll-contain shadow-popover'"
         :style="inline ? undefined : floatingStyle"
       >
         <li
@@ -163,7 +169,8 @@ watch(activeIndex, async (index) => {
           :aria-selected="option.value === model"
           class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
           :class="[index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700', inline ? 'min-h-11 text-base' : 'text-sm']"
-          @mousedown.prevent="select(option)"
+          @mousedown.prevent
+          @click="select(option)"
           @mousemove="activeIndex = index"
         >
           <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
@@ -172,6 +179,13 @@ watch(activeIndex, async (index) => {
             class="size-4 shrink-0 text-ink-900"
             aria-hidden="true"
           />
+        </li>
+        <li
+          v-if="hasMore"
+          role="presentation"
+          class="px-3 py-2 text-sm text-ink-500"
+        >
+          Aramayı daraltmak için yazın
         </li>
         <li
           v-if="!filtered.length"

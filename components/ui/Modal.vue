@@ -51,6 +51,20 @@ const isPhoneDialog = ref(false)
 const overlayStyle = computed(() => (isPhoneDialog.value ? { paddingTop: `${viewportFit.value.top}px` } : undefined))
 const panelStyle = computed(() => (isPhoneDialog.value ? { paddingBottom: `${viewportFit.value.bottomGap}px` } : undefined))
 
+// Phones: the scroll area ends with room as tall as the footer, so the last field or
+// option can always be scrolled clear of the footer.
+const footer = ref<HTMLElement | null>(null)
+const footerHeight = ref(0)
+const bodyStyle = computed(() => (isPhoneDialog.value && footerHeight.value ? { paddingBottom: `${footerHeight.value}px` } : undefined))
+let footerObserver: ResizeObserver | undefined
+watch(footer, (element) => {
+  footerObserver?.disconnect()
+  if (!element) return
+  footerObserver = new ResizeObserver(() => (footerHeight.value = element.offsetHeight))
+  footerObserver.observe(element)
+})
+onBeforeUnmount(() => footerObserver?.disconnect())
+
 function syncVisualViewport() {
   isPhoneDialog.value = window.innerWidth < 640
   const viewport = window.visualViewport
@@ -196,6 +210,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
             v-if="$slots.default"
             ref="body"
             class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6"
+            :style="bodyStyle"
           >
             <slot />
           </div>
@@ -203,6 +218,7 @@ onBeforeUnmount(() => toggleViewportTracking(false))
           <!-- One row on every size: [Vazgeç] [primary]; on phones the primary action takes the remaining width -->
           <footer
             v-if="$slots.footer"
+            ref="footer"
             class="flex shrink-0 gap-2 border-t border-ink-100 bg-ink-50/70 px-5 pt-4 max-sm:[&>:last-child]:flex-1 sm:justify-end sm:rounded-b-card sm:px-6 sm:pb-4"
             :class="viewportFit.bottomGap > 0 ? 'pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'"
           >
