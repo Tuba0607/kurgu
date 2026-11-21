@@ -95,6 +95,37 @@ function onTabKeydown(event: KeyboardEvent, index: number) {
   tabElements.value[next]?.focus()
 }
 
+// Active-tab indicator: one separate element that slides under the active tab
+// (text + count badge wide), so the tabs' rounded focus ring never bends it.
+const tabList = ref<HTMLElement | null>(null)
+const indicator = ref<{ left: number, width: number } | null>(null)
+// No transition for the first placement, otherwise it would slide in from the left edge.
+const indicatorAnimated = ref(false)
+
+function placeIndicator() {
+  const index = statusTabs.value.findIndex(tab => tab.value === activeStatus.value)
+  const tab = tabElements.value[index]
+  indicator.value = tab ? { left: tab.offsetLeft, width: tab.offsetWidth } : null
+}
+
+watch([activeStatus, () => statusTabs.value.map(tab => tab.count).join()], async () => {
+  await nextTick()
+  placeIndicator()
+})
+
+let tabResizeObserver: ResizeObserver | undefined
+watch(tabList, (list) => {
+  tabResizeObserver?.disconnect()
+  if (!list) return
+  placeIndicator()
+  requestAnimationFrame(() => (indicatorAnimated.value = true))
+  // Tab widths change with the viewport (text size) and once web fonts load.
+  tabResizeObserver = new ResizeObserver(placeIndicator)
+  tabResizeObserver.observe(list)
+  for (const tab of tabElements.value) tabResizeObserver.observe(tab)
+}, { flush: 'post' })
+onBeforeUnmount(() => tabResizeObserver?.disconnect())
+
 // Email: one line with ellipsis; the copy button sits left of the address.
 const { copy } = useCopyToClipboard()
 const emailCopied = ref(false)
@@ -435,7 +466,8 @@ function onContentSaved() {
               İçerikler
             </h2>
             <div
-              class="-mb-px flex justify-between overflow-x-auto sm:justify-start sm:gap-6"
+              ref="tabList"
+              class="relative -mb-px flex justify-between overflow-x-auto sm:justify-start sm:gap-6"
               role="tablist"
               aria-label="İçerik durumu"
             >
@@ -446,10 +478,10 @@ function onContentSaved() {
                 :ref="el => { if (el) tabElements[index] = el as HTMLButtonElement }"
                 type="button"
                 role="tab"
-                class="flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 pb-3 text-[13px] transition-colors sm:gap-1.5 sm:text-sm rounded-md focus-visible:ring-offset-surface"
+                class="relative flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md pb-3.5 text-[13px] transition-colors focus-visible:ring-offset-surface sm:gap-1.5 sm:text-sm"
                 :class="activeStatus === tab.value
-                  ? 'border-brand font-semibold text-ink-900'
-                  : 'border-transparent font-medium text-ink-500 hover:text-ink-900'"
+                  ? 'font-semibold text-ink-900'
+                  : 'font-medium text-ink-500 hover:text-ink-900'"
                 :aria-selected="activeStatus === tab.value"
                 aria-controls="client-contents-panel"
                 :tabindex="activeStatus === tab.value ? 0 : -1"
@@ -461,7 +493,21 @@ function onContentSaved() {
                   class="rounded-full px-1 py-px text-[11px] font-medium tabular-nums sm:px-1.5 sm:text-xs"
                   :class="activeStatus === tab.value ? 'bg-ink-900 text-white' : 'bg-ink-100 text-ink-600'"
                 >{{ tab.count }}</span>
+                <!-- Server render / before measuring: static bar under the active tab -->
+                <span
+                  v-if="!indicator && activeStatus === tab.value"
+                  class="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 rounded-t-[2px] bg-brand"
+                  aria-hidden="true"
+                />
               </button>
+              <!-- Flat 2px bar on the divider's bottom edge; only the top corners are rounded -->
+              <span
+                v-if="indicator"
+                class="pointer-events-none absolute bottom-0 left-0 h-0.5 rounded-t-[2px] bg-brand motion-reduce:transition-none"
+                :class="indicatorAnimated && 'transition-[transform,width] duration-150 ease-out'"
+                :style="{ width: `${indicator.width}px`, transform: `translateX(${indicator.left}px)` }"
+                aria-hidden="true"
+              />
             </div>
           </div>
 
