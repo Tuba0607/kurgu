@@ -88,6 +88,7 @@ defineProps<{ items: ClientListItem[] }>()
               <p
                 v-if="client.phone"
                 class="max-w-[15rem] truncate tabular-nums text-ink-500"
+                :title="client.phone"
               >
                 {{ client.phone }}
               </p>

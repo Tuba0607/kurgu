@@ -48,14 +48,6 @@ export function getInitials(name: string): string {
   return letters.join('').toLocaleUpperCase(LOCALE) || '?'
 }
 
-/**
- * Splits an email into segments so it can wrap before "@" and "." instead of
- * mid-word (rendered with <wbr> between the segments).
- */
-export function splitEmailForWrapping(email: string): string[] {
-  return email.split(/(?=[@.])/)
-}
-
 const DAY_MS = 24 * 60 * 60 * 1000
 const relativeFormatter = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'always' })
 

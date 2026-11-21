@@ -330,21 +330,19 @@ function onContentSaved() {
               <dt class="shrink-0 text-ink-500">
                 E-posta
               </dt>
-              <dd class="flex min-w-0 items-start justify-end gap-1">
+              <dd class="flex min-w-0 flex-1 items-center justify-end gap-1">
                 <template v-if="client.email">
-                  <!-- Full address, wrapping when long (no truncation) -->
+                  <!-- One line: icon left of the address, "…" when it does not fit, full address in the title -->
                   <a
                     :href="`mailto:${client.email}`"
-                    class="inline-flex min-w-0 items-start gap-1.5 text-right font-medium text-ink-600 hover:text-ink-900 hover:underline"
+                    :title="client.email"
+                    class="flex min-w-0 items-center gap-1.5 font-medium text-ink-600 hover:text-ink-900 hover:underline"
                   >
                     <Mail
-                      class="mt-0.5 size-3.5 shrink-0"
+                      class="size-3.5 shrink-0"
                       aria-hidden="true"
                     />
-                    <span class="min-w-0 [overflow-wrap:anywhere]"><template
-                      v-for="(part, index) in splitEmailForWrapping(client.email)"
-                      :key="index"
-                    >{{ part }}<wbr></template></span>
+                    <span class="min-w-0 truncate">{{ client.email }}</span>
                   </a>
                   <button
                     type="button"
@@ -375,18 +373,19 @@ function onContentSaved() {
               <dt class="shrink-0 text-ink-500">
                 Telefon
               </dt>
-              <dd class="min-w-0 text-right">
-                <!-- Long legacy values wrap instead of widening the card -->
+              <dd class="flex min-w-0 flex-1 justify-end">
+                <!-- Same pattern as the e-mail: one line, "…" if needed, full value in the title -->
                 <a
                   v-if="client.phone"
                   :href="`tel:${client.phone.replace(/[^\d+]/g, '')}`"
-                  class="inline-flex min-w-0 max-w-full items-start gap-1.5 font-medium tabular-nums text-ink-600 hover:text-ink-900 hover:underline"
+                  :title="client.phone"
+                  class="flex min-w-0 items-center gap-1.5 font-medium tabular-nums text-ink-600 hover:text-ink-900 hover:underline"
                 >
                   <Phone
-                    class="mt-0.5 size-3.5 shrink-0"
+                    class="size-3.5 shrink-0"
                     aria-hidden="true"
                   />
-                  <span class="min-w-0 [overflow-wrap:anywhere]">{{ client.phone }}</span>
+                  <span class="min-w-0 truncate">{{ client.phone }}</span>
                 </a>
                 <span
                   v-else
