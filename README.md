@@ -4,7 +4,7 @@ Ajans hesap yöneticilerinin müşterilerini ve müşterilere ait içerikleri ta
 
 ![Genel bakış](docs/screenshots/genel-bakis.png)
 
-**Canlı demo:** _yayınlandığında eklenecek_
+**Canlı demo:** https://kurgu-tau.vercel.app — demo verisi her gece 04:00'te (İstanbul) sıfırlanır.
 
 > Bu proje, **Kilit Grup Full Stack Developer teknik değerlendirmesi** kapsamında hazırlanmıştır.
 
