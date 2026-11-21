@@ -7,7 +7,7 @@
  * dates this week, a few overdue). Used by `npm run db:seed` and the nightly
  * demo reset (server/api/cron/reset-demo.get.ts).
  */
-import { ContentStatus, ContentType, type PrismaClient, SocialPlatform } from '@prisma/client'
+import { ContentStatus, ContentType, type Prisma, type PrismaClient, SocialPlatform } from '@prisma/client'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -111,51 +111,60 @@ const CONTENTS: SeedContent[] = [
 ]
 
 /** Replaces all data with the demo data in one transaction. Returns the new counts. */
+/**
+ * Replaces all data with the demo data in one transaction. Returns the new counts.
+ *
+ * Rows are built in memory and written with `createMany` (6 queries in total) so the
+ * reset stays fast on a remote database (Neon) and inside serverless time limits;
+ * one INSERT per row exceeded Prisma's default 5 s transaction timeout there.
+ */
 export async function resetDemoData(prisma: PrismaClient): Promise<{ clients: number, contents: number }> {
+  // Fixed ids keep links and API tests stable across re-seeds.
+  const clientId = (key: string) => `seed_client_${key}`
+  const clients = CLIENTS.map(({ key, createdDays, ...data }) => ({ id: clientId(key), ...data, createdAt: at(createdDays, 9) }))
+
+  const contents: Prisma.ContentCreateManyInput[] = []
+  const statusChanges: Prisma.ContentStatusChangeCreateManyInput[] = []
+
+  for (const [index, content] of CONTENTS.entries()) {
+    const id = `seed_content_${String(index + 1).padStart(2, '0')}`
+    const createdAt = at(content.created, 9 + (index % 8), (index * 7) % 60)
+    const reviewAt = content.review !== undefined ? at(content.review, 14) : undefined
+    const publishedAt = content.published !== undefined ? at(content.published, 11) : null
+
+    // Status history always starts as a draft at creation time.
+    const history: Array<{ fromStatus: ContentStatus | null, toStatus: ContentStatus, changedAt: Date }> = [
+      { fromStatus: null, toStatus: DRAFT, changedAt: createdAt },
+    ]
+    if (reviewAt) history.push({ fromStatus: DRAFT, toStatus: IN_REVIEW, changedAt: reviewAt })
+    if (publishedAt) history.push({ fromStatus: IN_REVIEW, toStatus: PUBLISHED, changedAt: publishedAt })
+
+    contents.push({
+      id,
+      title: content.title,
+      body: content.body || null,
+      type: content.type,
+      platform: content.type === SOCIAL_POST ? content.platform ?? null : null,
+      status: content.status,
+      clientId: clientId(content.client),
+      scheduledAt: content.scheduled !== undefined ? at(content.scheduled, 10) : null,
+      publishedAt,
+      createdAt,
+      statusChangedAt: history.at(-1)!.changedAt,
+      updatedAt: history.at(-1)!.changedAt,
+    })
+    statusChanges.push(...history.map(change => ({ contentId: id, ...change })))
+  }
+
   await prisma.$transaction(async (tx) => {
     // Order matters only for clarity: contents cascade with their client anyway.
     await tx.contentStatusChange.deleteMany()
     await tx.content.deleteMany()
     await tx.client.deleteMany()
+    await tx.client.createMany({ data: clients })
+    await tx.content.createMany({ data: contents })
+    await tx.contentStatusChange.createMany({ data: statusChanges })
+  }, { maxWait: 10_000, timeout: 30_000 })
 
-    const clientIds = new Map<string, string>()
-    for (const client of CLIENTS) {
-      const { key, createdDays, ...data } = client
-      // Fixed ids keep links and API tests stable across re-seeds.
-      const created = await tx.client.create({ data: { id: `seed_client_${key}`, ...data, createdAt: at(createdDays, 9) } })
-      clientIds.set(key, created.id)
-    }
-
-    for (const [index, content] of CONTENTS.entries()) {
-      const createdAt = at(content.created, 9 + (index % 8), (index * 7) % 60)
-      const reviewAt = content.review !== undefined ? at(content.review, 14) : undefined
-      const publishedAt = content.published !== undefined ? at(content.published, 11) : null
-
-      // Status history always starts as a draft at creation time.
-      const history: Array<{ fromStatus: ContentStatus | null, toStatus: ContentStatus, changedAt: Date }> = [
-        { fromStatus: null, toStatus: DRAFT, changedAt: createdAt },
-      ]
-      if (reviewAt) history.push({ fromStatus: DRAFT, toStatus: IN_REVIEW, changedAt: reviewAt })
-      if (publishedAt) history.push({ fromStatus: IN_REVIEW, toStatus: PUBLISHED, changedAt: publishedAt })
-
-      await tx.content.create({
-        data: {
-          id: `seed_content_${String(index + 1).padStart(2, '0')}`,
-          title: content.title,
-          body: content.body || null,
-          type: content.type,
-          platform: content.type === SOCIAL_POST ? content.platform ?? null : null,
-          status: content.status,
-          clientId: clientIds.get(content.client)!,
-          scheduledAt: content.scheduled !== undefined ? at(content.scheduled, 10) : null,
-          publishedAt,
-          createdAt,
-          statusChangedAt: history.at(-1)!.changedAt,
-          updatedAt: history.at(-1)!.changedAt,
-          statusChanges: { create: history },
-        },
-      })
-    }
-  })
-  return { clients: CLIENTS.length, contents: CONTENTS.length }
+  return { clients: clients.length, contents: contents.length }
 }
