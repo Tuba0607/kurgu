@@ -26,7 +26,12 @@ export function useQueryUpdater(options: { history?: 'push' | 'replace' } = {}) 
  * Two-way binding between a text input and a query param. The input updates
  * instantly; the URL (and therefore the API request) is debounced.
  */
-export function useDebouncedQuerySearch(name = 'search', delay = 300) {
+export function useDebouncedQuerySearch(
+  name = 'search',
+  delay = 300,
+  /** Params cleared together with a search change (e.g. ['page']). */
+  resetParams: string[] = [],
+) {
   const applied = useRouteQueryValue(name)
   const updateQuery = useQueryUpdater()
   const input = ref(applied.value)
@@ -36,7 +41,9 @@ export function useDebouncedQuerySearch(name = 'search', delay = 300) {
     clearTimeout(timer)
     timer = setTimeout(() => {
       const trimmed = value.trim()
-      if (trimmed !== applied.value) updateQuery({ [name]: trimmed })
+      if (trimmed !== applied.value) {
+        updateQuery({ [name]: trimmed, ...Object.fromEntries(resetParams.map(param => [param, null])) })
+      }
     }, delay)
   })
 

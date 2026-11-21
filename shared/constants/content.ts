@@ -15,8 +15,15 @@ export const CONTENT_TYPE_LABELS: Record<ContentTypeValue, string> = {
   WEB_PAGE: 'Web sayfası',
 }
 
+// Compact variants for narrow columns (full label stays available as a tooltip).
+export const CONTENT_TYPE_SHORT_LABELS: Record<ContentTypeValue, string> = {
+  SOCIAL_POST: 'Sosyal medya',
+  BLOG_POST: 'Blog yazısı',
+  WEB_PAGE: 'Web sayfası',
+}
+
 export const CONTENT_STATUS_LABELS: Record<ContentStatusValue, string> = {
   DRAFT: 'Taslak',
-  IN_REVIEW: 'Onayda',
+  IN_REVIEW: 'Onay bekliyor',
   PUBLISHED: 'Yayında',
 }

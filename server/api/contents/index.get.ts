@@ -1,19 +1,33 @@
 import type { Prisma } from '@prisma/client'
 import { contentListQuerySchema } from '#shared/schemas/content'
 
+/** Paginated content list. Filters are optional and combined with AND. */
 export default defineEventHandler(async (event) => {
-  const { search, status, clientId } = getValidatedQueryParams(event, contentListQuerySchema)
+  const { search, status, clientId, page, pageSize } = getValidatedQueryParams(event, contentListQuerySchema)
 
-  // All filters are optional and combined with AND.
   const where: Prisma.ContentWhereInput = {
     ...(status && { status }),
     ...(clientId && { clientId }),
     ...(search && { OR: buildTextSearchFilter('title', search) }),
   }
 
-  return prisma.content.findMany({
-    where,
-    select: contentListSelect,
-    orderBy: newestFirst,
-  })
+  // Count and page are read in one transaction so they always match.
+  const [total, items] = await prisma.$transaction([
+    prisma.content.count({ where }),
+    prisma.content.findMany({
+      where,
+      select: contentListSelect,
+      orderBy: newestFirst,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ])
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  }
 })

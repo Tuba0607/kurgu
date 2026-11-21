@@ -44,29 +44,10 @@ export function buildActiveFilterChips(filters: ContentFilterState, clientName?:
   return chips
 }
 
-/** Query patch that resets every content filter to its default. */
-export function contentFilterResetPatch(): Record<ContentFilterParam, null> {
-  return { search: null, status: null, clientId: null }
+/** Query patch that resets every content filter to its default (and the page back to 1). */
+export function contentFilterResetPatch(): Record<ContentFilterParam | 'page', null> {
+  return { search: null, status: null, clientId: null, page: null }
 }
-
-// Status counts and filtering for an already-loaded list of contents
-// (used by the client detail page, which filters client-side).
 
 /** '' stands for the "Tümü" (all) tab. */
 export type StatusFilterValue = ContentStatusValue | ''
-
-export type ContentStatusCounts = Record<ContentStatusValue, number> & { total: number }
-
-export function countContentsByStatus(contents: ReadonlyArray<{ status: ContentStatusValue }>): ContentStatusCounts {
-  const counts: ContentStatusCounts = { total: contents.length, DRAFT: 0, IN_REVIEW: 0, PUBLISHED: 0 }
-  for (const content of contents) counts[content.status]++
-  return counts
-}
-
-/** Returns every content for '' ("Tümü"), otherwise only the contents with that status. */
-export function filterContentsByStatus<T extends { status: ContentStatusValue }>(
-  contents: ReadonlyArray<T>,
-  status: StatusFilterValue,
-): T[] {
-  return status ? contents.filter(content => content.status === status) : [...contents]
-}

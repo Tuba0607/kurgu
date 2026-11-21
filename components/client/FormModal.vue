@@ -1,9 +1,26 @@
 <script setup lang="ts">
 import { clientCreateSchema } from '#shared/schemas/client'
+import { PHONE_MAX_LENGTH, PHONE_PLACEHOLDER } from '#shared/utils/phone'
 import { toFieldErrors } from '#shared/utils/validation'
 import type { ClientListItem } from '~/types/api'
 
-const props = defineProps<{ open: boolean }>()
+/** Fields of an existing client used to prefill the form in edit mode. */
+interface EditableClient {
+  id: string
+  name: string
+  contactName: string | null
+  email: string | null
+  phone: string | null
+  industry: string | null
+}
+
+const props = withDefaults(defineProps<{
+  open: boolean
+  /** Edit mode when set: the form is prefilled and saved with PATCH. */
+  client?: EditableClient | null
+}>(), {
+  client: null,
+})
 
 const emit = defineEmits<{
   close: []
@@ -14,6 +31,7 @@ const toast = useToast()
 const formElement = ref<HTMLFormElement | null>(null)
 const formId = useId()
 const submitting = ref(false)
+const isEdit = computed(() => Boolean(props.client))
 
 const form = reactive({
   name: '',
@@ -24,10 +42,28 @@ const form = reactive({
 })
 
 const { errors, setErrors, clearErrors } = useFormErrors(form, formElement)
+// Formats the phone as "+90 5XX XXX XX XX" while typing (Zod still validates on submit).
+const phoneMask = usePhoneMask()
+
+// Existing industries are suggested; a new one can be typed and is title-cased on save.
+const { data: industries, refresh: refreshIndustries } = useFetch<string[]>('/api/industries', {
+  key: 'industries',
+  lazy: true,
+  server: false,
+  immediate: false,
+})
 
 watch(() => props.open, (open) => {
   if (!open) return
-  Object.assign(form, { name: '', contactName: '', email: '', phone: '', industry: '' })
+  refreshIndustries()
+  const client = props.client
+  Object.assign(form, {
+    name: client?.name ?? '',
+    contactName: client?.contactName ?? '',
+    email: client?.email ?? '',
+    phone: client?.phone ?? '',
+    industry: client?.industry ?? '',
+  })
   clearErrors()
 })
 
@@ -41,15 +77,18 @@ async function submit() {
 
   submitting.value = true
   try {
-    const client = await $fetch('/api/clients', { method: 'POST', body: result.data })
-    toast.success('Müşteri eklendi', `${client.name} müşteri listesine eklendi.`)
+    const client = props.client
+      ? await $fetch<ClientListItem>(clientApiPath(props.client.id), { method: 'PATCH', body: result.data })
+      : await $fetch<ClientListItem>('/api/clients', { method: 'POST', body: result.data })
+    if (isEdit.value) toast.success('Müşteri bilgileri güncellendi', client.name)
+    else toast.success('Müşteri eklendi', `${client.name} müşteri listesine eklendi.`)
     emit('saved', client)
     emit('close')
   }
   catch (error) {
     const fieldErrors = getApiFieldErrors(error)
     if (fieldErrors) await setErrors(fieldErrors)
-    else toast.error('Müşteri eklenemedi', getApiErrorMessage(error))
+    else toast.error(isEdit.value ? 'Müşteri güncellenemedi' : 'Müşteri eklenemedi', getApiErrorMessage(error))
   }
   finally {
     submitting.value = false
@@ -60,8 +99,8 @@ async function submit() {
 <template>
   <UiModal
     :open="open"
-    title="Yeni müşteri"
-    description="Müşteri bilgilerini girin. Yalnızca firma adı zorunludur."
+    :title="isEdit ? 'Müşteriyi düzenle' : 'Yeni müşteri'"
+    :description="isEdit ? 'Müşteri bilgilerini güncelleyin. Yalnızca firma adı zorunludur.' : 'Müşteri bilgilerini girin. Yalnızca firma adı zorunludur.'"
     :persistent="submitting"
     @close="emit('close')"
   >
@@ -113,12 +152,13 @@ async function submit() {
         :error="errors.industry"
         optional
       >
-        <UiInput
+        <UiCombobox
           :id="field.id"
           v-model="form.industry"
+          :suggestions="industries ?? []"
           :invalid="field.invalid"
           :aria-describedby="field.describedBy"
-          placeholder="Örn. Turizm"
+          placeholder="Sektör seçin veya yazın"
           maxlength="80"
         />
       </UiFormField>
@@ -156,8 +196,9 @@ async function submit() {
           type="tel"
           inputmode="tel"
           autocomplete="tel"
-          placeholder="+90 212 000 00 00"
-          maxlength="20"
+          :placeholder="PHONE_PLACEHOLDER"
+          :maxlength="PHONE_MAX_LENGTH"
+          @input="phoneMask.onInput"
         />
       </UiFormField>
     </form>
@@ -175,7 +216,7 @@ async function submit() {
         :form="formId"
         :loading="submitting"
       >
-        Müşteriyi kaydet
+        {{ isEdit ? 'Değişiklikleri kaydet' : 'Müşteriyi kaydet' }}
       </UiButton>
     </template>
   </UiModal>

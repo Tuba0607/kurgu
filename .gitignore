@@ -29,3 +29,6 @@ coverage
 .fleet
 .idea
 *.local
+
+# Local database backups
+.backups/

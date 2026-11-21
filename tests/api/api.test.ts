@@ -164,8 +164,26 @@ describe('Clients API', () => {
     expect(body.message).toBe('Lütfen formdaki hataları düzeltin.')
     expect(body.data.fieldErrors).toEqual({
       name: 'Firma adı en az 2 karakter olmalıdır.',
-      email: 'Geçerli bir e-posta adresi giriniz.',
+      email: 'E-posta adresini ornek@firma.com biçiminde girin.',
     })
+  })
+
+  it('rejects an invalid phone number with 422 and does not create the client', async () => {
+    const name = `${TEST_MARKER} Invalid Phone`
+    const { status, body } = await api('POST', '/api/clients', { body: { name, phone: '05454454545454959454' } })
+
+    expect(status).toBe(422)
+    expect(body.data.fieldErrors).toEqual({ phone: 'Telefon numarasını 05XX XXX XX XX biçiminde, 10 haneli cep numarası olarak girin.' })
+    expect(await testPrisma.client.count({ where: { name } })).toBe(0)
+  })
+
+  it('stores a valid phone number in the canonical format', async () => {
+    const { status, body } = await api('POST', '/api/clients', {
+      body: { name: `${TEST_MARKER} Valid Phone`, phone: '+90 532 123 45 67' },
+    })
+
+    expect(status).toBe(201)
+    expect(body.phone).toBe('+90 532 123 45 67')
   })
 
   it('rejects a missing body with 422', async () => {
@@ -184,14 +202,20 @@ describe('Clients API', () => {
     expect(array.body.message).toBe('İstek gövdesi bir JSON nesnesi olmalıdır.')
   })
 
-  it('returns a client with its contents, newest first', async () => {
+  it('returns a client with per-status content counts (contents are paginated separately)', async () => {
     const { status, body } = await api('GET', `/api/clients/${LINA}`)
 
     expect(status).toBe(200)
-    expect(body).toMatchObject({ id: LINA, name: 'Lina Kozmetik' })
-    expect(body.contents).toHaveLength(3)
-    expect(body.contents.every((content: Json) => content.client.id === LINA)).toBe(true)
-    expectSortedNewestFirst(body.contents)
+    expect(body).toMatchObject({ id: LINA, name: 'Lina Kozmetik', contentCount: 3 })
+    expect(body).not.toHaveProperty('contents')
+    expect(Object.keys(body.statusCounts).sort()).toEqual(['DRAFT', 'IN_REVIEW', 'PUBLISHED'])
+    const sum = Object.values(body.statusCounts as Record<string, number>).reduce((a, b) => a + b, 0)
+    expect(sum).toBe(3)
+    expect(body.statusCounts).toEqual({
+      DRAFT: await testPrisma.content.count({ where: { clientId: LINA, status: 'DRAFT' } }),
+      IN_REVIEW: await testPrisma.content.count({ where: { clientId: LINA, status: 'IN_REVIEW' } }),
+      PUBLISHED: await testPrisma.content.count({ where: { clientId: LINA, status: 'PUBLISHED' } }),
+    })
   })
 
   it('returns 404 for an unknown client', async () => {
@@ -208,54 +232,104 @@ describe('Clients API', () => {
 })
 
 describe('Contents API: listing and filters', () => {
-  it('lists all contents newest first without the body field', async () => {
+  it('returns the first page of 10 by default, newest first, without the body field', async () => {
     const { status, body } = await api('GET', '/api/contents')
 
     expect(status).toBe(200)
-    expect(body).toHaveLength(countsBefore.contents)
-    expect(body[0]).not.toHaveProperty('body')
-    expect(body[0].client).toEqual({ id: expect.any(String), name: expect.any(String) })
-    expectSortedNewestFirst(body)
+    expect(body).toMatchObject({
+      page: 1,
+      pageSize: 10,
+      total: countsBefore.contents,
+      totalPages: Math.ceil(countsBefore.contents / 10),
+    })
+    expect(body.items).toHaveLength(Math.min(10, countsBefore.contents))
+    expect(body.items[0]).not.toHaveProperty('body')
+    expect(body.items[0].client).toEqual({ id: expect.any(String), name: expect.any(String) })
+    expectSortedNewestFirst(body.items)
+  })
+
+  it('pages through all contents without gaps or duplicates', async () => {
+    const all = await api('GET', '/api/contents?pageSize=50')
+    const pageSize = 4
+    const totalPages = Math.ceil(countsBefore.contents / pageSize)
+    const seen: string[] = []
+    for (let page = 1; page <= totalPages; page++) {
+      const { body } = await api('GET', `/api/contents?page=${page}&pageSize=${pageSize}`)
+      expect(body).toMatchObject({ page, pageSize, total: countsBefore.contents, totalPages })
+      expect(body.items.length).toBe(page < totalPages ? pageSize : countsBefore.contents - pageSize * (totalPages - 1))
+      seen.push(...body.items.map((content: Json) => content.id))
+    }
+    expect(seen).toEqual(all.body.items.map((content: Json) => content.id))
+  })
+
+  it('returns an empty page (with the real totals) beyond the last page', async () => {
+    const { status, body } = await api('GET', '/api/contents?page=999')
+    expect(status).toBe(200)
+    expect(body.items).toEqual([])
+    expect(body).toMatchObject({ page: 999, total: countsBefore.contents, totalPages: Math.ceil(countsBefore.contents / 10) })
+  })
+
+  it('paginates filtered results with filter-specific totals', async () => {
+    const { body } = await api('GET', `/api/contents?clientId=${LINA}&pageSize=2&page=2`)
+    expect(body).toMatchObject({ page: 2, pageSize: 2, total: 3, totalPages: 2 })
+    expect(body.items).toHaveLength(1)
+    expect(body.items[0].client.id).toBe(LINA)
+  })
+
+  it('reports zero pages for an empty result', async () => {
+    const { body } = await api('GET', `/api/contents?clientId=${MAVI_ROTA}&search=eşleşmeyen-başlık`)
+    expect(body).toMatchObject({ items: [], total: 0, totalPages: 0, page: 1 })
+  })
+
+  it('rejects invalid page and pageSize values with 400', async () => {
+    for (const query of ['page=0', 'page=-1', 'page=abc', 'page=1.5', 'pageSize=0', 'pageSize=51']) {
+      const { status, body } = await api('GET', `/api/contents?${query}`)
+      expect(status, query).toBe(400)
+      const field = query.split('=')[0]!
+      expect(body.data.fieldErrors[field], query).toBe(field === 'page' ? 'Geçersiz sayfa numarası.' : 'Geçersiz sayfa boyutu.')
+    }
   })
 
   it('filters by status', async () => {
-    const { body } = await api('GET', '/api/contents?status=PUBLISHED')
-    expect(body.length).toBeGreaterThan(0)
-    expect(body.every((content: Json) => content.status === 'PUBLISHED')).toBe(true)
+    const { body } = await api('GET', '/api/contents?status=PUBLISHED&pageSize=50')
+    expect(body.items.length).toBeGreaterThan(0)
+    expect(body.items.every((content: Json) => content.status === 'PUBLISHED')).toBe(true)
   })
 
   it('filters by client', async () => {
     const { body } = await api('GET', `/api/contents?clientId=${LINA}`)
-    expect(body).toHaveLength(3)
-    expect(body.every((content: Json) => content.client.id === LINA)).toBe(true)
+    expect(body.items).toHaveLength(3)
+    expect(body.total).toBe(3)
+    expect(body.items.every((content: Json) => content.client.id === LINA)).toBe(true)
   })
 
   it('searches by title, case-insensitively', async () => {
     const { body } = await api('GET', '/api/contents?search=REHBER')
-    expect(body.map((content: Json) => content.title)).toEqual(['Cilt tipine göre bakım rehberi'])
+    expect(body.items.map((content: Json) => content.title)).toEqual(['Cilt tipine göre bakım rehberi'])
   })
 
   it('combines search, status and client filters', async () => {
     const byClientAndStatus = await api('GET', `/api/contents?clientId=${MAVI_ROTA}&status=PUBLISHED`)
-    expect(byClientAndStatus.body).toHaveLength(2)
+    expect(byClientAndStatus.body.items).toHaveLength(1)
 
     const allThree = await api('GET', `/api/contents?clientId=${MAVI_ROTA}&status=PUBLISHED&search=koy`)
-    expect(allThree.body.map((content: Json) => content.title)).toEqual(['Ege’de keşfedilmemiş 7 koy'])
+    expect(allThree.body.items.map((content: Json) => content.title)).toEqual(['Ege’de keşfedilmemiş 7 koy'])
 
-    const noMatch = await api('GET', `/api/contents?clientId=${MAVI_ROTA}&status=DRAFT`)
-    expect(noMatch.body).toEqual([])
+    const noMatch = await api('GET', `/api/contents?clientId=${MAVI_ROTA}&status=PUBLISHED&search=balon`)
+    expect(noMatch.body.items).toEqual([])
   })
 
   it('treats empty filter values as no filter', async () => {
-    const { status, body } = await api('GET', '/api/contents?status=&clientId=&search=')
+    const { status, body } = await api('GET', '/api/contents?status=&clientId=&search=&page=')
     expect(status).toBe(200)
-    expect(body).toHaveLength(countsBefore.contents)
+    expect(body.total).toBe(countsBefore.contents)
+    expect(body.page).toBe(1)
   })
 
   it('returns an empty list for a well-formed but unknown client id', async () => {
     const { status, body } = await api('GET', '/api/contents?clientId=cl_does_not_exist')
     expect(status).toBe(200)
-    expect(body).toEqual([])
+    expect(body.items).toEqual([])
   })
 
   it('rejects invalid filters with 400', async () => {
@@ -314,11 +388,11 @@ describe('Contents API: create and read', () => {
   it('rejects invalid content data with 422', async () => {
     const testClient = await getTestClient()
     const { status, body } = await api('POST', '/api/contents', {
-      body: { title: 'ab', type: 'VIDEO', status: 'DONE', clientId: testClient.id },
+      body: { title: 'a', type: 'VIDEO', status: 'DONE', clientId: testClient.id },
     })
     expect(status).toBe(422)
     expect(body.data.fieldErrors).toEqual({
-      title: 'Başlık en az 3 karakter olmalıdır.',
+      title: 'Başlık en az 2 karakter olmalıdır.',
       type: 'Geçerli bir içerik türü seçiniz.',
       status: 'Geçerli bir içerik durumu seçiniz.',
     })
@@ -434,6 +508,83 @@ describe('Contents API: update and publishedAt lifecycle', () => {
     expect(missing.body.message).toBe('İçerik bulunamadı.')
 
     const malformed = await api('PATCH', '/api/contents/bad$id', { body: { title: 'Geçerli başlık' } })
+    expect(malformed.status).toBe(400)
+  })
+})
+
+describe('Clients API: update (PATCH)', () => {
+  it('updates the client fields and keeps its contents', async () => {
+    const client = await createTestClient({ contactName: 'Eski Yetkili', phone: '05321234567' })
+    const content = await createTestContent(client.id, { status: 'PUBLISHED' })
+
+    const { status, body } = await api('PATCH', `/api/clients/${client.id}`, {
+      body: {
+        name: `${TEST_MARKER} Güncel Firma`,
+        contactName: 'Yeni Yetkili',
+        email: 'yeni@firma.example',
+        phone: '+90 533 765 43 21',
+        industry: '',
+      },
+    })
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({
+      id: client.id,
+      name: `${TEST_MARKER} Güncel Firma`,
+      contactName: 'Yeni Yetkili',
+      email: 'yeni@firma.example',
+      phone: '+90 533 765 43 21',
+      industry: null,
+      contentCount: 1,
+    })
+
+    // Related content is untouched
+    const detail = await api('GET', `/api/clients/${client.id}`)
+    const related = await api('GET', `/api/contents?clientId=${client.id}`)
+    expect(related.body.items.map((item: Json) => item.id)).toEqual([content.id])
+    expect(detail.body.contentCount).toBe(1)
+    const stored = await testPrisma.content.findUniqueOrThrow({ where: { id: content.id } })
+    expect(stored).toMatchObject({ clientId: client.id, status: 'PUBLISHED', title: content.title })
+    expect(stored.publishedAt?.toISOString()).toBe(content.publishedAt)
+  })
+
+  it('applies a partial update without touching other fields', async () => {
+    const client = await createTestClient({ email: 'kalsin@firma.example', industry: 'Medya' })
+    const { status, body } = await api('PATCH', `/api/clients/${client.id}`, { body: { contactName: 'Sadece Yetkili' } })
+
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ contactName: 'Sadece Yetkili', email: 'kalsin@firma.example', industry: 'Medya', name: client.name })
+  })
+
+  it('rejects invalid data with 422 and leaves the client unchanged', async () => {
+    const client = await createTestClient({ phone: '05321234567' })
+    const { status, body } = await api('PATCH', `/api/clients/${client.id}`, {
+      body: { name: ' ', email: 'yanlis', phone: '0532' },
+    })
+
+    expect(status).toBe(422)
+    expect(body.data.fieldErrors).toEqual({
+      name: 'Firma adı zorunludur.',
+      email: 'E-posta adresini ornek@firma.com biçiminde girin.',
+      phone: 'Telefon numarasını 05XX XXX XX XX biçiminde, 10 haneli cep numarası olarak girin.',
+    })
+    const stored = await testPrisma.client.findUniqueOrThrow({ where: { id: client.id } })
+    expect(stored).toMatchObject({ name: client.name, phone: '+90 532 123 45 67' })
+  })
+
+  it('rejects an empty update with 422', async () => {
+    const client = await createTestClient()
+    const { status, body } = await api('PATCH', `/api/clients/${client.id}`, { body: {} })
+    expect(status).toBe(422)
+    expect(body.data.fieldErrors).toEqual({ _form: 'Güncellenecek en az bir alan gönderiniz.' })
+  })
+
+  it('returns 404 for an unknown client and 400 for a malformed id', async () => {
+    const missing = await api('PATCH', '/api/clients/cl_does_not_exist', { body: { name: 'Geçerli Ad' } })
+    expect(missing.status).toBe(404)
+    expect(missing.body.message).toBe('Müşteri bulunamadı.')
+
+    const malformed = await api('PATCH', '/api/clients/bad$id', { body: { name: 'Geçerli Ad' } })
     expect(malformed.status).toBe(400)
   })
 })

@@ -15,6 +15,8 @@ export default defineEventHandler(async (event) => {
       data: {
         ...input,
         publishedAt: resolvePublishedAtOnCreate(input.status),
+        // The initial status is the first entry of the status history.
+        statusChanges: { create: { fromStatus: null, toStatus: input.status } },
       },
       select: contentDetailSelect,
     })

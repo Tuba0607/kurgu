@@ -2,7 +2,8 @@
 export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', '@nuxt/eslint'],
 
-  devtools: { enabled: true },
+  // DevTools only while developing; never part of a production build.
+  devtools: { enabled: process.env.NODE_ENV !== 'production' },
 
   app: {
     head: {

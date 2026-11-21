@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, CircleAlert } from 'lucide-vue-next'
+import { CircleAlert } from 'lucide-vue-next'
 import {
   CONTENT_TYPE_LABELS,
   CONTENT_TYPES,
@@ -32,10 +32,10 @@ const errorId = `${name}-error`
       <label
         v-for="type in CONTENT_TYPES"
         :key="type"
-        class="relative flex cursor-pointer items-center gap-3 rounded-xl py-2.5 pl-3 pr-9 text-sm font-medium ring-1 ring-inset transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand sm:flex-col sm:items-start sm:gap-2"
+        class="relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ring-1 ring-inset transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand sm:flex-col sm:items-start sm:gap-2"
         :class="model === type
-          ? 'bg-ink-100 text-ink-900 ring-ink-400'
-          : ['bg-white text-ink-700 hover:bg-ink-50 hover:ring-ink-400', error ? 'ring-rose-300' : 'ring-ink-300']"
+          ? 'bg-ink-50 text-ink-900 ring-ink-600'
+          : ['bg-white text-ink-700 hover:ring-ink-400', error ? 'ring-rose-300' : 'ring-ink-300']"
       >
         <input
           v-model="model"
@@ -52,12 +52,6 @@ const errorId = `${name}-error`
           aria-hidden="true"
         />
         {{ CONTENT_TYPE_LABELS[type] }}
-        <!-- Selected marker: small corporate red check (not used for errors) -->
-        <Check
-          v-if="model === type"
-          class="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-brand sm:top-3 sm:translate-y-0"
-          aria-hidden="true"
-        />
       </label>
     </div>
     <p

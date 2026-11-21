@@ -25,12 +25,15 @@ export default defineEventHandler(async (event) => {
       }
 
       const publishedAt = resolvePublishedAtOnUpdate(current, input.status)
+      const statusChanged = input.status !== undefined && input.status !== current.status
 
       return tx.content.update({
         where: { id },
         data: {
           ...input,
           ...(publishedAt !== undefined && { publishedAt }),
+          // Every real status transition is recorded for the detail page timeline.
+          ...(statusChanged && { statusChanges: { create: { fromStatus: current.status, toStatus: input.status! } } }),
         },
         select: contentDetailSelect,
       })

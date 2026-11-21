@@ -22,11 +22,11 @@ Dijital ajans hesap yöneticilerinin müşterilerini ve müşterilere ait içeri
 
 Uygulama, bir ajansın içerik iş akışını tek bir yerden izlemesini sağlar:
 
-- **Dashboard:** Toplam müşteri ve içerik sayıları, Taslak / Onayda / Yayında dağılımı ve son eklenen içerikler.
+- **Genel bakış:** Toplam müşteri ve içerik sayıları, Taslak / Onay bekliyor / Yayında dağılımı ve son eklenen içerikler.
 - **Müşteri yönetimi:** Müşteri ekleme, listeleme, firma adına göre arama ve müşteri detayında ilişkili içerikler.
 - **İçerik yönetimi:** Müşteriye bağlı içerik oluşturma ve düzenleme, durum değiştirme, başlık araması, durum ve müşteri filtreleri.
 
-İçerik türleri **sosyal medya gönderisi**, **blog yazısı** ve **web sayfası**; durumlar **Taslak**, **Onayda** ve **Yayında**'dır.
+İçerik türleri **sosyal medya gönderisi**, **blog yazısı** ve **web sayfası**; durumlar **Taslak**, **Onay bekliyor** ve **Yayında**'dır.
 
 Kapsam bilinçli olarak değerlendirme gereksinimleriyle sınırlı tutulmuştur. Kimlik doğrulama, silme işlemleri ve sayfalama bu sürümde yer almaz.
 
@@ -173,7 +173,7 @@ Seed **idempotent**tir: kayıtlar sabit kimliklerle `upsert` edilir, tekrar çal
 ```
 ├── app.vue, error.vue          # Uygulama kökü ve hata sayfası
 ├── layouts/default.vue         # Sidebar, mobil menü ve içerik alanı
-├── pages/                      # Dashboard, müşteriler, içerikler (liste + detay)
+├── pages/                      # Genel bakış, müşteriler, içerikler (liste + detay)
 ├── components/
 │   ├── app/                    # Marka alanı ve sidebar
 │   ├── ui/                     # Ortak bileşenler (Button, Modal, FormField, EmptyState…)

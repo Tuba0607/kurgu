@@ -2,15 +2,20 @@
 import { FilePlus2, FileText, SearchX, X } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
 import { ID_PATTERN } from '#shared/schemas/common'
+import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
 
 useHead({ title: 'İçerikler' })
 
 // Filters live in the URL so they survive reloads and can be shared.
-const { input: searchInput, applied: search } = useDebouncedQuerySearch('search')
+// A new search always starts again from page 1.
+const { input: searchInput, applied: search } = useDebouncedQuerySearch('search', 300, ['page'])
 const statusParam = useRouteQueryValue('status')
 const clientIdParam = useRouteQueryValue('clientId')
+const page = computed(() => parsePageParam(useRouteQueryValue('page').value))
 // Discrete filter changes (status, client, chip removal) create history entries.
 const updateQuery = useQueryUpdater({ history: 'push' })
+// Corrections (e.g. an out-of-range page) replace the history entry instead.
+const replaceQuery = useQueryUpdater()
 
 // Invalid values in a hand-edited URL are ignored instead of causing an API error.
 const status = computed(() => (isContentStatus(statusParam.value) ? statusParam.value : ''))
@@ -22,14 +27,35 @@ const hasAppliedFilters = computed(() => hasActiveContentFilters({
   clientId: clientId.value,
 }))
 
-const { data: contents, status: fetchStatus, error, refresh } = await useFetch('/api/contents', {
+// Paginated on the server: only the current page is loaded.
+const { data: listing, status: fetchStatus, error, refresh } = await useFetch('/api/contents', {
   query: computed(() => ({
     search: search.value || undefined,
     status: status.value || undefined,
     clientId: clientId.value || undefined,
+    page: page.value > 1 ? page.value : undefined,
+    pageSize: CONTENT_PAGE_SIZE,
   })),
   lazy: true,
 })
+
+const contents = computed(() => listing.value?.items)
+
+// A page that no longer exists (e.g. after filtering or deleting) falls back to the last valid one.
+watch(listing, (value) => {
+  if (import.meta.server || !value || value.page <= Math.max(value.totalPages, 1)) return
+  replaceQuery({ page: value.totalPages > 1 ? String(value.totalPages) : null })
+}, { immediate: true })
+
+const listCard = ref<HTMLElement | null>(null)
+
+async function goToPage(target: number) {
+  await updateQuery({ page: target > 1 ? String(target) : null })
+  // Bring the top of the list back into view when paging from the footer.
+  if (listCard.value && listCard.value.getBoundingClientRect().top < 0) {
+    listCard.value.scrollIntoView({ block: 'start' })
+  }
+}
 
 const { data: clients } = await useFetch('/api/clients', {
   key: 'content-filter-clients',
@@ -49,11 +75,11 @@ const statusTabs = [
 
 const selectedClientId = computed({
   get: () => clientId.value,
-  set: value => updateQuery({ clientId: value }),
+  set: value => updateQuery({ clientId: value, page: null }),
 })
 
-const isInitialLoading = computed(() => fetchStatus.value === 'pending' && !contents.value)
-const isRefreshing = computed(() => fetchStatus.value === 'pending' && Boolean(contents.value))
+const isInitialLoading = computed(() => fetchStatus.value === 'pending' && !listing.value)
+const isRefreshing = computed(() => fetchStatus.value === 'pending' && Boolean(listing.value))
 
 // Active filter chips: derived from the applied (URL) filters, so browser
 // back/forward and shared links always show the right chips.
@@ -73,7 +99,7 @@ async function removeFilter(param: ContentFilterParam) {
   const nextParam = params[index + 1] ?? params[index - 1]
 
   if (param === 'search') searchInput.value = ''
-  await updateQuery({ [param]: null })
+  await updateQuery({ [param]: null, page: null })
   await nextTick()
   const target = (nextParam && chipButtons.value[nextParam]) || resultSummary.value
   target?.focus()
@@ -92,6 +118,12 @@ const editingContentId = ref<string | null>(null)
 function openCreate() {
   editingContentId.value = null
   modalOpen.value = true
+}
+
+// New contents appear first (newest first), so show page 1 after creating one.
+function onSaved() {
+  if (!editingContentId.value && page.value > 1) updateQuery({ page: null })
+  else refresh()
 }
 
 function openEdit(id: string) {
@@ -119,7 +151,10 @@ function openEdit(id: string) {
       </template>
     </UiPageHeader>
 
-    <div class="card overflow-hidden">
+    <div
+      ref="listCard"
+      class="card scroll-mt-4 overflow-hidden"
+    >
       <!-- Filters -->
       <div class="space-y-3 border-b border-ink-100 p-4 sm:px-5">
         <div class="flex flex-wrap items-center gap-3">
@@ -136,7 +171,7 @@ function openEdit(id: string) {
             :options="clientFilterOptions"
           />
           <div
-            class="grid w-full grid-cols-4 gap-1 rounded-lg bg-ink-100 p-1 sm:inline-flex sm:w-auto"
+            class="flex w-full gap-1 rounded-lg bg-ink-100 p-1 sm:inline-flex sm:w-auto"
             role="group"
             aria-label="Duruma göre filtrele"
           >
@@ -144,12 +179,12 @@ function openEdit(id: string) {
               v-for="tab in statusTabs"
               :key="tab.value"
               type="button"
-              class="flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition"
+              class="flex flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium transition sm:flex-none sm:px-3 sm:text-sm"
               :class="status === tab.value
                 ? 'bg-white text-ink-900 shadow-sm'
                 : 'text-ink-600 hover:text-ink-900'"
               :aria-pressed="status === tab.value"
-              @click="updateQuery({ status: tab.value })"
+              @click="updateQuery({ status: tab.value, page: null })"
             >
               <span
                 v-if="tab.value"
@@ -162,22 +197,25 @@ function openEdit(id: string) {
           </div>
         </div>
 
-        <!-- Result count + removable chips for the applied filters -->
-        <div class="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
-          <p
-            ref="resultSummary"
-            class="rounded-md text-sm text-ink-500 focus:outline-none"
-            tabindex="-1"
-            aria-live="polite"
-          >
-            <template v-if="contents">
-              <span class="font-medium tabular-nums text-ink-900">{{ contents.length }}</span>
-              {{ hasAppliedFilters ? 'sonuç bulundu' : 'içerik' }}
-            </template>
-          </p>
+        <!-- The visible total lives in the pagination footer; this announces result changes
+             to screen readers and receives focus after filters are cleared. -->
+        <p
+          ref="resultSummary"
+          class="sr-only"
+          tabindex="-1"
+          aria-live="polite"
+        >
+          <template v-if="listing">
+            {{ listing.total }} {{ hasAppliedFilters ? 'sonuç bulundu' : 'içerik' }}
+          </template>
+        </p>
 
+        <!-- Removable chips for the applied filters -->
+        <div
+          v-if="activeChips.length > 0"
+          class="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2"
+        >
           <ul
-            v-if="activeChips.length > 0"
             class="flex min-w-0 max-w-full flex-wrap items-center gap-2"
             aria-label="Aktif filtreler"
           >
@@ -219,7 +257,7 @@ function openEdit(id: string) {
 
       <!-- List -->
       <UiErrorState
-        v-if="error && !contents"
+        v-if="error && !listing"
         :message="getApiErrorMessage(error)"
         :retrying="fetchStatus === 'pending'"
         @retry="refresh()"
@@ -230,9 +268,9 @@ function openEdit(id: string) {
         :rows="8"
       />
 
-      <template v-else-if="contents">
+      <template v-else-if="listing && contents">
         <UiEmptyState
-          v-if="contents.length === 0 && hasAppliedFilters"
+          v-if="listing.total === 0 && hasAppliedFilters"
           :icon="SearchX"
           title="Filtrelere uygun içerik bulunamadı"
           description="Arama metnini veya filtreleri değiştirerek tekrar deneyin."
@@ -246,7 +284,7 @@ function openEdit(id: string) {
         </UiEmptyState>
 
         <UiEmptyState
-          v-else-if="contents.length === 0"
+          v-else-if="listing.total === 0"
           :icon="FileText"
           title="Henüz içerik yok"
           description="İlk içeriği oluşturarak müşterileriniz için içerik takibine başlayın."
@@ -256,13 +294,21 @@ function openEdit(id: string) {
           </UiButton>
         </UiEmptyState>
 
-        <ContentTable
-          v-else
-          :items="contents"
-          class="transition-opacity"
-          :class="isRefreshing && 'opacity-60'"
-          @edit="openEdit"
-        />
+        <template v-else>
+          <ContentTable
+            :items="contents"
+            class="transition-opacity"
+            :class="isRefreshing && 'opacity-60'"
+            @edit="openEdit"
+          />
+          <UiPagination
+            :page="listing.page"
+            :total-pages="listing.totalPages"
+            :total="listing.total"
+            :page-size="listing.pageSize"
+            @change="goToPage"
+          />
+        </template>
       </template>
     </div>
 
@@ -271,7 +317,7 @@ function openEdit(id: string) {
       :content-id="editingContentId"
       :default-client-id="clientId || null"
       @close="modalOpen = false"
-      @saved="refresh()"
+      @saved="onSaved"
     />
   </div>
 </template>

@@ -26,11 +26,11 @@ const name = useId()
     >
       {{ legend }}
     </legend>
-    <div class="grid grid-cols-3 gap-1 rounded-xl bg-ink-100 p-1">
+    <div class="flex gap-1 rounded-xl bg-ink-100 p-1">
       <label
         v-for="status in CONTENT_STATUSES"
         :key="status"
-        class="relative flex cursor-pointer items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-ink-600 transition hover:text-ink-900 has-[:checked]:bg-white has-[:checked]:text-ink-900 has-[:checked]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/60 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+        class="relative flex flex-auto cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium text-ink-600 transition hover:text-ink-900 has-[:checked]:bg-white has-[:checked]:text-ink-900 has-[:checked]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/60 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
       >
         <input
           v-model="model"

@@ -11,7 +11,7 @@ defineEmits<{ close: [] }>()
 const route = useRoute()
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', to: '/', icon: LayoutDashboard, exact: true },
+  { label: 'Genel bakış', to: '/', icon: LayoutDashboard, exact: true },
   { label: 'Müşteriler', to: '/clients', icon: Users, exact: false },
   { label: 'İçerikler', to: '/contents', icon: FileText, exact: false },
 ] as const
@@ -53,7 +53,7 @@ function isActive(item: (typeof NAV_ITEMS)[number]): boolean {
         >
           <NuxtLink
             :to="item.to"
-            class="group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:ring-inset focus-visible:ring-offset-0"
+            class="group relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm outline-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/70 focus-visible:ring-offset-0 [&:focus:not(:focus-visible)]:shadow-none"
             :class="isActive(item)
               ? 'bg-sidebar-active font-medium text-white'
               : 'text-ink-300 hover:bg-sidebar-hover hover:text-white'"
@@ -79,7 +79,7 @@ function isActive(item: (typeof NAV_ITEMS)[number]): boolean {
     </nav>
 
     <p class="px-7 pb-6 text-[11px] text-ink-400">
-      Müşteri ve içerik yönetimi
+      Kilit Grup için tasarlandı
     </p>
   </div>
 </template>

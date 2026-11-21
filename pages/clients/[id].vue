@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, Copy, FilePlus2, FileText, Mail, Phone, SearchX } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, FilePlus2, FileText, Mail, Pencil, Phone, SearchX } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
-import type { ClientDetail } from '~/types/api'
+import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
+import type { ClientDetail, ClientListItem, ContentListPage } from '~/types/api'
 import type { StatusFilterValue } from '~/utils/content-filters'
 
 const route = useRoute()
@@ -23,21 +24,9 @@ if (import.meta.server && isNotFound.value) {
   setResponseStatus(useRequestEvent()!, 404)
 }
 
-const counts = computed(() => countContentsByStatus(client.value?.contents ?? []))
-
-// Informational summary (not interactive): filtering is done only via the tabs below.
-const summaryCards = computed(() => [
-  { key: 'total', label: 'Toplam içerik', count: counts.value.total, dot: 'bg-ink-700' },
-  ...CONTENT_STATUSES.map(value => ({
-    key: value,
-    label: CONTENT_STATUS_LABELS[value],
-    count: counts.value[value],
-    dot: CONTENT_STATUS_STYLES[value].dot,
-  })),
-])
-
 // Status tabs, synced with the URL (?status=...). Defaults to "Tümü".
 const statusParam = useRouteQueryValue('status')
+const page = computed(() => parsePageParam(useRouteQueryValue('page').value))
 const updateQuery = useQueryUpdater()
 const activeStatus = computed<StatusFilterValue>(() => (isContentStatus(statusParam.value) ? statusParam.value : ''))
 
@@ -49,20 +38,41 @@ interface StatusTab {
 }
 
 const statusTabs = computed<StatusTab[]>(() => [
-  { value: '', label: 'Tümü', count: counts.value.total, id: 'client-tab-all' },
+  { value: '', label: 'Tümü', count: client.value?.contentCount ?? 0, id: 'client-tab-all' },
   ...CONTENT_STATUSES.map(value => ({
     value,
     label: CONTENT_STATUS_LABELS[value],
-    count: counts.value[value],
+    count: client.value?.statusCounts[value] ?? 0,
     id: `client-tab-${value.toLowerCase()}`,
   })),
 ])
 
 const activeTabId = computed(() => statusTabs.value.find(tab => tab.value === activeStatus.value)?.id)
-const filteredContents = computed(() => filterContentsByStatus(client.value?.contents ?? [], activeStatus.value))
+// The client's contents are paginated on the server (same endpoint as the contents page).
+const { data: listing, refresh: refreshContents } = await useFetch<ContentListPage>('/api/contents', {
+  key: 'client-contents',
+  query: computed(() => ({
+    clientId: clientId.value,
+    status: activeStatus.value || undefined,
+    page: page.value > 1 ? page.value : undefined,
+    pageSize: CONTENT_PAGE_SIZE,
+  })),
+  lazy: true,
+})
+
+// A page that no longer exists falls back to the last valid one.
+watch(listing, (value) => {
+  if (import.meta.server || !value || value.page <= Math.max(value.totalPages, 1)) return
+  updateQuery({ page: value.totalPages > 1 ? String(value.totalPages) : null })
+}, { immediate: true })
 
 function selectStatus(value: StatusFilterValue) {
-  if (value !== activeStatus.value) updateQuery({ status: value })
+  // Changing the status filter always starts again from page 1.
+  if (value !== activeStatus.value) updateQuery({ status: value, page: null })
+}
+
+function goToPage(target: number) {
+  updateQuery({ page: target > 1 ? String(target) : null })
 }
 
 // WAI-ARIA tabs keyboard pattern: arrows / Home / End move and activate.
@@ -97,6 +107,15 @@ async function copyEmail(email: string) {
 
 onBeforeUnmount(() => clearTimeout(copiedTimer))
 
+// Client edit: only the client's own fields change; its contents stay as they are.
+const clientModalOpen = ref(false)
+
+function onClientSaved(updated: ClientListItem) {
+  if (!client.value) return
+  const { contentCount: _contentCount, ...fields } = updated
+  client.value = { ...client.value, ...fields }
+}
+
 const contentModalOpen = ref(false)
 const editingContentId = ref<string | null>(null)
 
@@ -108,6 +127,13 @@ function openCreate() {
 function openEdit(id: string) {
   editingContentId.value = id
   contentModalOpen.value = true
+}
+
+// Refresh counts and the current page; a new content (newest first) is shown on page 1.
+function onContentSaved() {
+  refresh()
+  if (!editingContentId.value && page.value > 1) updateQuery({ page: null })
+  else refreshContents()
 }
 </script>
 
@@ -168,17 +194,7 @@ function openEdit(id: string) {
           <UiSkeleton class="h-4 w-24" />
         </div>
       </div>
-      <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <div
-          v-for="card in 4"
-          :key="card"
-          class="card space-y-3 p-4"
-        >
-          <UiSkeleton class="h-3 w-20" />
-          <UiSkeleton class="h-7 w-10" />
-        </div>
-      </div>
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div class="card space-y-4 p-5">
           <UiSkeleton
             v-for="row in 4"
@@ -186,7 +202,7 @@ function openEdit(id: string) {
             class="h-4 w-full"
           />
         </div>
-        <div class="card lg:col-span-2">
+        <div class="card xl:col-span-2">
           <UiListSkeleton :rows="4" />
         </div>
       </div>
@@ -226,45 +242,36 @@ function openEdit(id: string) {
         </UiButton>
       </div>
 
-      <!-- Status summary: informational only -->
-      <section
-        class="mb-6"
-        aria-label="İçerik durum özeti"
-      >
-        <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div
-            v-for="card in summaryCards"
-            :key="card.key"
-            class="card flex min-w-0 flex-col gap-2 p-4"
-          >
-            <dt class="flex items-center gap-2 text-[13px] font-medium text-ink-500">
-              <span
-                class="size-2 shrink-0 rounded-full"
-                :class="card.dot"
-                aria-hidden="true"
-              />
-              {{ card.label }}
-            </dt>
-            <dd class="text-[28px] font-semibold leading-none tabular-nums tracking-tight text-ink-900">
-              {{ card.count }}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
         <!-- Client info -->
         <section
           class="card p-5"
           aria-labelledby="client-info-title"
         >
-          <h2
-            id="client-info-title"
-            class="text-sm font-semibold text-ink-900"
-          >
-            Müşteri bilgileri
-          </h2>
-          <dl class="mt-4 divide-y divide-ink-100 text-sm">
+          <div class="flex items-center justify-between gap-3">
+            <h2
+              id="client-info-title"
+              class="text-sm font-semibold text-ink-900"
+            >
+              Müşteri bilgileri
+            </h2>
+            <UiButton
+              variant="ghost"
+              size="sm"
+              class="-my-1 -mr-2"
+              aria-label="Müşteri bilgilerini düzenle"
+              @click="clientModalOpen = true"
+            >
+              <template #icon>
+                <Pencil
+                  class="size-3.5"
+                  aria-hidden="true"
+                />
+              </template>
+              Düzenle
+            </UiButton>
+          </div>
+          <dl class="mt-3 divide-y divide-ink-100 text-sm">
             <div class="flex justify-between gap-4 py-2.5">
               <dt class="shrink-0 text-ink-500">
                 Yetkili
@@ -330,17 +337,18 @@ function openEdit(id: string) {
               <dt class="shrink-0 text-ink-500">
                 Telefon
               </dt>
-              <dd class="text-right">
+              <dd class="min-w-0 text-right">
+                <!-- Long legacy values wrap instead of widening the card -->
                 <a
                   v-if="client.phone"
                   :href="`tel:${client.phone.replace(/[^\d+]/g, '')}`"
-                  class="inline-flex items-center gap-1.5 font-medium tabular-nums text-ink-600 hover:text-ink-900 hover:underline"
+                  class="inline-flex min-w-0 max-w-full items-start gap-1.5 font-medium tabular-nums text-ink-600 hover:text-ink-900 hover:underline"
                 >
                   <Phone
-                    class="size-3.5 shrink-0"
+                    class="mt-0.5 size-3.5 shrink-0"
                     aria-hidden="true"
                   />
-                  {{ client.phone }}
+                  <span class="min-w-0 [overflow-wrap:anywhere]">{{ client.phone }}</span>
                 </a>
                 <span
                   v-else
@@ -361,7 +369,7 @@ function openEdit(id: string) {
 
         <!-- Client contents: the tabs are the only status filter on this page -->
         <section
-          class="card overflow-hidden lg:col-span-2"
+          class="card overflow-hidden xl:col-span-2"
           aria-labelledby="client-contents-title"
         >
           <div class="flex flex-col gap-3 border-b border-ink-100 px-4 pt-4 sm:px-5">
@@ -383,7 +391,7 @@ function openEdit(id: string) {
                 :ref="el => { if (el) tabElements[index] = el as HTMLButtonElement }"
                 type="button"
                 role="tab"
-                class="flex shrink-0 items-center gap-1.5 border-b-2 pb-3 text-sm transition-colors focus-visible:ring-inset focus-visible:ring-offset-0"
+                class="flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 pb-3 text-[13px] transition-colors sm:gap-1.5 sm:text-sm focus-visible:ring-inset focus-visible:ring-offset-0"
                 :class="activeStatus === tab.value
                   ? 'border-brand font-semibold text-ink-900'
                   : 'border-transparent font-medium text-ink-500 hover:text-ink-900'"
@@ -395,7 +403,7 @@ function openEdit(id: string) {
               >
                 {{ tab.label }}
                 <span
-                  class="rounded-full px-1.5 py-px text-xs font-medium tabular-nums"
+                  class="rounded-full px-1 py-px text-[11px] font-medium tabular-nums sm:px-1.5 sm:text-xs"
                   :class="activeStatus === tab.value ? 'bg-ink-900 text-white' : 'bg-ink-100 text-ink-600'"
                 >{{ tab.count }}</span>
               </button>
@@ -407,8 +415,13 @@ function openEdit(id: string) {
             role="tabpanel"
             :aria-labelledby="activeTabId"
           >
+            <UiListSkeleton
+              v-if="!listing"
+              :rows="4"
+            />
+
             <UiEmptyState
-              v-if="client.contents.length === 0"
+              v-else-if="client.contentCount === 0"
               :icon="FileText"
               title="Bu müşteriye ait içerik yok"
               description="Müşteri için ilk içeriği oluşturarak başlayın."
@@ -419,7 +432,7 @@ function openEdit(id: string) {
             </UiEmptyState>
 
             <UiEmptyState
-              v-else-if="filteredContents.length === 0 && activeStatus"
+              v-else-if="listing.total === 0 && activeStatus"
               :icon="FileText"
               :title="`${CONTENT_STATUS_LABELS[activeStatus]} durumunda içerik yok`"
               description="Bu müşterinin bu durumda içeriği bulunmuyor. Farklı bir sekme seçebilirsiniz."
@@ -432,23 +445,37 @@ function openEdit(id: string) {
               </UiButton>
             </UiEmptyState>
 
-            <ContentTable
-              v-else
-              :items="filteredContents"
-              :show-client="false"
-              @edit="openEdit"
-            />
+            <template v-else>
+              <ContentTable
+                :items="listing.items"
+                :show-client="false"
+                @edit="openEdit"
+              />
+              <UiPagination
+                :page="listing.page"
+                :total-pages="listing.totalPages"
+                :total="listing.total"
+                :page-size="listing.pageSize"
+                @change="goToPage"
+              />
+            </template>
           </div>
         </section>
       </div>
     </template>
 
+    <ClientFormModal
+      :open="clientModalOpen"
+      :client="client"
+      @close="clientModalOpen = false"
+      @saved="onClientSaved"
+    />
     <ContentFormModal
       :open="contentModalOpen"
       :content-id="editingContentId"
       :default-client-id="client?.id"
       @close="contentModalOpen = false"
-      @saved="refresh()"
+      @saved="onContentSaved"
     />
   </div>
 </template>

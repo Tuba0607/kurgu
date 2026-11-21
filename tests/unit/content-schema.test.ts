@@ -46,8 +46,8 @@ describe('contentCreateSchema', () => {
   })
 
   it('enforces title length limits', () => {
-    expect(toFieldErrors(contentCreateSchema.safeParse({ ...validContent, title: 'ab' }).error!).title)
-      .toBe('Başlık en az 3 karakter olmalıdır.')
+    expect(toFieldErrors(contentCreateSchema.safeParse({ ...validContent, title: ' a ' }).error!).title)
+      .toBe('Başlık en az 2 karakter olmalıdır.')
     expect(toFieldErrors(contentCreateSchema.safeParse({ ...validContent, title: 'a'.repeat(201) }).error!).title)
       .toBe('Başlık en fazla 200 karakter olabilir.')
   })
@@ -92,12 +92,12 @@ describe('contentUpdateSchema', () => {
 describe('contentListQuerySchema', () => {
   it('accepts combined filters', () => {
     expect(contentListQuerySchema.parse({ search: ' blog ', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota' }))
-      .toEqual({ search: 'blog', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota' })
+      .toEqual({ search: 'blog', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: 1, pageSize: 10 })
   })
 
   it('treats empty filter values as absent', () => {
     expect(contentListQuerySchema.parse({ search: '', status: '', clientId: '' }))
-      .toEqual({ search: undefined, status: undefined, clientId: undefined })
+      .toEqual({ search: undefined, status: undefined, clientId: undefined, page: 1, pageSize: 10 })
   })
 
   it('rejects invalid filter values', () => {

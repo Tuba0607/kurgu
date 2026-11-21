@@ -21,7 +21,7 @@ const NuxtLink = resolveComponent('NuxtLink')
 
 const VARIANT_CLASSES = {
   primary: 'bg-primary text-white shadow-sm hover:bg-primary-hover active:bg-primary disabled:hover:bg-primary',
-  secondary: 'bg-white text-ink-700 shadow-sm ring-1 ring-inset ring-ink-300 hover:bg-ink-50 hover:text-ink-900',
+  secondary: 'border border-ink-300 bg-white text-ink-700 shadow-sm hover:bg-ink-50 hover:text-ink-900',
   ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
 } as const
 

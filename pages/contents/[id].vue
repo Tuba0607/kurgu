@@ -55,6 +55,30 @@ watch(selectedStatus, async (next) => {
 
 const editOpen = ref(false)
 
+// Body view: plain text or a type-specific preview (WAI-ARIA tabs).
+const bodyTabs = [
+  { value: 'text', label: 'Metin' },
+  { value: 'preview', label: 'Önizleme' },
+] as const
+type BodyView = typeof bodyTabs[number]['value']
+const bodyView = ref<BodyView>('text')
+const bodyTabElements = ref<HTMLButtonElement[]>([])
+
+function onBodyTabKeydown(event: KeyboardEvent, index: number) {
+  const last = bodyTabs.length - 1
+  const targets: Record<string, number> = {
+    ArrowRight: index === last ? 0 : index + 1,
+    ArrowLeft: index === 0 ? last : index - 1,
+    Home: 0,
+    End: last,
+  }
+  const next = targets[event.key]
+  if (next === undefined) return
+  event.preventDefault()
+  bodyView.value = bodyTabs[next]!.value
+  bodyTabElements.value[next]?.focus()
+}
+
 function onSaved(updated: ContentDetail) {
   content.value = updated
 }
@@ -114,8 +138,8 @@ function onSaved(updated: ContentDetail) {
         <UiSkeleton class="h-5 w-40" />
         <UiSkeleton class="h-7 w-2/3" />
       </div>
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="card space-y-3 p-5 lg:col-span-2">
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div class="card space-y-3 p-5 xl:col-span-2">
           <UiSkeleton
             v-for="row in 6"
             :key="row"
@@ -158,24 +182,62 @@ function onSaved(updated: ContentDetail) {
         </template>
       </UiPageHeader>
 
-      <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
         <!-- Body -->
         <section
-          class="card p-5 sm:p-6 lg:col-span-2"
+          class="card p-5 sm:p-6 xl:col-span-2"
           aria-labelledby="content-body-title"
         >
-          <h2
-            id="content-body-title"
-            class="text-sm font-semibold text-ink-900"
-          >
-            İçerik metni
-          </h2>
-          <p
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2
+              id="content-body-title"
+              class="text-sm font-semibold text-ink-900"
+            >
+              İçerik metni
+            </h2>
+            <div
+              v-if="content.body"
+              role="tablist"
+              aria-label="Metin görünümü"
+              class="inline-flex rounded-lg bg-ink-100 p-0.5"
+            >
+              <button
+                v-for="(tab, index) in bodyTabs"
+                :id="`content-body-tab-${tab.value}`"
+                :key="tab.value"
+                ref="bodyTabElements"
+                type="button"
+                role="tab"
+                class="rounded-md px-3 py-1 text-[13px] font-medium transition-colors"
+                :class="bodyView === tab.value ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900'"
+                :aria-selected="bodyView === tab.value"
+                aria-controls="content-body-panel"
+                :tabindex="bodyView === tab.value ? 0 : -1"
+                @click="bodyView = tab.value"
+                @keydown="onBodyTabKeydown($event, index)"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+          </div>
+          <div
             v-if="content.body"
-            class="mt-3 whitespace-pre-line break-words text-[15px] leading-7 text-ink-700"
+            id="content-body-panel"
+            role="tabpanel"
+            :aria-labelledby="`content-body-tab-${bodyView}`"
+            class="mt-4"
           >
-            {{ content.body }}
-          </p>
+            <ContentPreview
+              v-if="bodyView === 'preview'"
+              :content="content"
+            />
+            <p
+              v-else
+              class="whitespace-pre-line break-words text-[15px] leading-7 text-ink-700"
+            >
+              {{ content.body }}
+            </p>
+          </div>
           <div
             v-else
             class="mt-3 rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center text-sm text-ink-500"

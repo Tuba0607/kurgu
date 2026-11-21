@@ -89,7 +89,7 @@ watch(() => route.fullPath, closeMenu)
 
     <main
       id="main-content"
-      class="lg:pl-[264px]"
+      class="outline-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:pl-[264px]"
       tabindex="-1"
     >
       <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">

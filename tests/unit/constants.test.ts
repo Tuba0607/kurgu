@@ -24,7 +24,7 @@ describe('shared content constants', () => {
     })
     expect(CONTENT_STATUS_LABELS).toEqual({
       DRAFT: 'Taslak',
-      IN_REVIEW: 'Onayda',
+      IN_REVIEW: 'Onay bekliyor',
       PUBLISHED: 'Yayında',
     })
   })

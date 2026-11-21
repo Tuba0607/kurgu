@@ -11,8 +11,19 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Keyboard focus only: the brand ring is never drawn for pointer focus. */
   :focus-visible {
     @apply outline-none ring-2 ring-brand/60 ring-offset-2 ring-offset-canvas;
+  }
+
+  /* Pointer focus: hide the browser's default outline (text fields keep their own focus ring). */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Programmatic focus targets (skip link target, dialog panel, result summaries) never show a ring. */
+  [tabindex='-1']:not([role='tab']):not([role='option']):focus-visible {
+    @apply ring-0 ring-offset-0;
   }
 
   @media (prefers-reduced-motion: reduce) {

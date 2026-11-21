@@ -1,16 +1,23 @@
 <script setup lang="ts">
-import { CONTENT_TYPE_LABELS, type ContentTypeValue } from '#shared/constants/content'
+import { CONTENT_TYPE_LABELS, CONTENT_TYPE_SHORT_LABELS, type ContentTypeValue } from '#shared/constants/content'
 
-defineProps<{ type: ContentTypeValue }>()
+defineProps<{
+  type: ContentTypeValue
+  /** Compact label for narrow columns; the full label is kept as a tooltip. */
+  short?: boolean
+}>()
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-600">
+  <span
+    class="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-600"
+    :title="short ? CONTENT_TYPE_LABELS[type] : undefined"
+  >
     <component
       :is="CONTENT_TYPE_ICONS[type]"
       class="size-4 shrink-0 text-ink-400"
       aria-hidden="true"
     />
-    {{ CONTENT_TYPE_LABELS[type] }}
+    {{ short ? CONTENT_TYPE_SHORT_LABELS[type] : CONTENT_TYPE_LABELS[type] }}
   </span>
 </template>

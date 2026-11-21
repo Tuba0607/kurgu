@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   buildActiveFilterChips,
   contentFilterResetPatch,
-  countContentsByStatus,
-  filterContentsByStatus,
   hasActiveContentFilters,
 } from '../../utils/content-filters'
 import { applyQueryPatch } from '../../utils/query'
@@ -43,52 +41,13 @@ describe('applyQueryPatch', () => {
 })
 
 describe('content filter reset', () => {
-  it('removes search, status and client filters but keeps unrelated params', () => {
-    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', ref: 'dashboard' }
+  it('removes search, status, client and page but keeps unrelated params', () => {
+    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: '2', ref: 'dashboard' }
     expect(applyQueryPatch(query, contentFilterResetPatch())).toEqual({ ref: 'dashboard' })
   })
 
   it('is a no-op when no filter is set', () => {
     expect(applyQueryPatch({}, contentFilterResetPatch())).toEqual({})
-  })
-})
-
-describe('countContentsByStatus', () => {
-  it('counts every status and the total', () => {
-    const contents = [{ status: 'DRAFT' }, { status: 'PUBLISHED' }, { status: 'PUBLISHED' }] as const
-    expect(countContentsByStatus(contents)).toEqual({ total: 3, DRAFT: 1, IN_REVIEW: 0, PUBLISHED: 2 })
-  })
-
-  it('returns zeros for an empty list', () => {
-    expect(countContentsByStatus([])).toEqual({ total: 0, DRAFT: 0, IN_REVIEW: 0, PUBLISHED: 0 })
-  })
-})
-
-describe('filterContentsByStatus', () => {
-  const contents = [
-    { id: 'a', status: 'DRAFT' },
-    { id: 'b', status: 'IN_REVIEW' },
-    { id: 'c', status: 'PUBLISHED' },
-    { id: 'd', status: 'PUBLISHED' },
-  ] as const
-
-  it('returns every content for the "all" tab', () => {
-    expect(filterContentsByStatus(contents, '').map(c => c.id)).toEqual(['a', 'b', 'c', 'd'])
-  })
-
-  it('returns only the matching status and keeps order', () => {
-    expect(filterContentsByStatus(contents, 'PUBLISHED').map(c => c.id)).toEqual(['c', 'd'])
-    expect(filterContentsByStatus(contents, 'IN_REVIEW').map(c => c.id)).toEqual(['b'])
-  })
-
-  it('returns an empty list when no content has the status', () => {
-    expect(filterContentsByStatus(contents.filter(c => c.status !== 'DRAFT'), 'DRAFT')).toEqual([])
-  })
-
-  it('does not mutate the input', () => {
-    const copy = [...contents]
-    filterContentsByStatus(contents, 'DRAFT')
-    expect(contents).toEqual(copy)
   })
 })
 
@@ -124,8 +83,8 @@ describe('buildActiveFilterChips', () => {
   })
 
   it('removing one chip keeps the others (query patch for a single param)', () => {
-    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', ref: 'dashboard' }
+    const query = { search: 'koy', status: 'PUBLISHED', clientId: 'seed_client_mavi_rota', page: '2', ref: 'dashboard' }
     expect(applyQueryPatch(query, { status: null }))
-      .toEqual({ search: 'koy', clientId: 'seed_client_mavi_rota', ref: 'dashboard' })
+      .toEqual({ search: 'koy', clientId: 'seed_client_mavi_rota', page: '2', ref: 'dashboard' })
   })
 })
