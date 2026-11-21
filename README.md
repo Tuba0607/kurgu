@@ -153,7 +153,8 @@ Seed tüm müşteri ve içerikleri **silip** demo verisini yeniden oluşturur; t
 | `npm run typecheck` | vue-tsc ile tip kontrolü |
 | `npm run test:unit` | Zod şemaları, `publishedAt` kuralı, arama yardımcısı ve enum uyumu |
 | `npm run test:api` | API integration testleri |
-| `npm test` | Tüm testler |
+| `npm test` | Birim + API testleri |
+| `npm run test:e2e` | Playwright: 375 ve 393 px'te her sayfa ve diyalogda yatay taşma olmadığını doğrular (yüklü Google Chrome'u ve yerel veritabanını kullanır, veri değiştirmez) |
 | `npm run build` | Production build |
 
 **API integration testleri hakkında**

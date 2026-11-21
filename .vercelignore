@@ -17,3 +17,7 @@ coverage/
 tests/
 docs/
 docker-compose.yml
+
+# Playwright output
+test-results/
+playwright-report/

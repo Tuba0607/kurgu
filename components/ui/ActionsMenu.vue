@@ -151,23 +151,31 @@ function itemClass(item: ActionsMenuItem) {
       :style="menuStyle"
       @keydown="onMenuKeydown"
     >
-      <button
+      <template
         v-for="item in items"
         :key="item.key"
-        ref="itemRefs"
-        type="button"
-        role="menuitem"
-        :class="[ITEM_BASE, itemClass(item), 'rounded-lg px-3 py-2 text-sm font-medium']"
-        @click="choose(item.key)"
       >
-        <component
-          :is="item.icon"
-          v-if="item.icon"
-          class="size-4 shrink-0"
-          aria-hidden="true"
+        <div
+          v-if="item.separatorBefore"
+          role="separator"
+          class="-mx-1 my-1 h-px bg-ink-100"
         />
-        {{ item.label }}
-      </button>
+        <button
+          ref="itemRefs"
+          type="button"
+          role="menuitem"
+          :class="[ITEM_BASE, itemClass(item), 'rounded-lg px-3 py-2 text-sm font-medium']"
+          @click="choose(item.key)"
+        >
+          <component
+            :is="item.icon"
+            v-if="item.icon"
+            class="size-4 shrink-0"
+            aria-hidden="true"
+          />
+          {{ item.label }}
+        </button>
+      </template>
     </div>
 
     <!-- Mobile: bottom sheet -->
@@ -179,7 +187,7 @@ function itemClass(item: ActionsMenuItem) {
     >
       <div
         v-if="isOpen && isSheet"
-        class="fixed inset-0 z-[60] flex items-end"
+        class="fixed inset-0 z-[60] flex touch-pan-y touch-pinch-zoom items-end"
       >
         <div
           class="absolute inset-0 bg-ink-950/30 backdrop-blur-[2px]"
@@ -191,7 +199,7 @@ function itemClass(item: ActionsMenuItem) {
           ref="menu"
           role="menu"
           :aria-label="sheetTitle ? `${sheetTitle}: ${label}` : label"
-          class="relative w-full animate-dialog-in rounded-t-card bg-surface px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay ring-1 ring-ink-900/5 motion-reduce:animate-none"
+          class="relative w-full animate-dialog-in rounded-t-card bg-surface px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-overlay ring-1 ring-ink-900/5 motion-reduce:animate-none"
           @keydown="onMenuKeydown"
         >
           <div
@@ -205,23 +213,32 @@ function itemClass(item: ActionsMenuItem) {
           >
             {{ sheetTitle }}
           </p>
-          <button
+          <template
             v-for="item in items"
             :key="item.key"
-            ref="itemRefs"
-            type="button"
-            role="menuitem"
-            :class="[ITEM_BASE, itemClass(item), 'min-h-12 rounded-xl px-4 text-base font-medium']"
-            @click="choose(item.key)"
           >
-            <component
-              :is="item.icon"
-              v-if="item.icon"
-              class="size-5 shrink-0"
-              aria-hidden="true"
+            <div
+              v-if="item.separatorBefore"
+              role="separator"
+              class="mx-4 my-1 h-px bg-ink-100"
             />
-            {{ item.label }}
-          </button>
+            <!-- 48px+ touch targets -->
+            <button
+              ref="itemRefs"
+              type="button"
+              role="menuitem"
+              :class="[ITEM_BASE, itemClass(item), 'min-h-12 rounded-xl px-4 text-base font-medium']"
+              @click="choose(item.key)"
+            >
+              <component
+                :is="item.icon"
+                v-if="item.icon"
+                class="size-5 shrink-0"
+                aria-hidden="true"
+              />
+              {{ item.label }}
+            </button>
+          </template>
         </div>
       </div>
     </Transition>

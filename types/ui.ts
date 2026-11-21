@@ -7,4 +7,6 @@ export interface ActionsMenuItem {
   icon?: Component
   /** Destructive action, shown in red. */
   danger?: boolean
+  /** Draws a thin divider above this item (e.g. between "Düzenle" and "Sil"). */
+  separatorBefore?: boolean
 }

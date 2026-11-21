@@ -76,8 +76,15 @@ async function deleteContent() {
 const editOpen = ref(false)
 
 // "⋯" menu (header on desktop, back-link row on phones)
+// Desktop shows "Düzenle" as a button, so its ⋯ only holds the delete action;
+// on phones ⋯ is the only action button and holds both.
 const actionItems: ActionsMenuItem[] = [{ key: 'delete', label: 'İçeriği sil', icon: Trash2, danger: true }]
+const mobileActionItems: ActionsMenuItem[] = [
+  { key: 'edit', label: 'Düzenle', icon: Pencil },
+  { key: 'delete', label: 'Sil', icon: Trash2, danger: true, separatorBefore: true },
+]
 function onAction(key: string) {
+  if (key === 'edit') editOpen.value = true
   if (key === 'delete') deleteOpen.value = true
 }
 
@@ -112,7 +119,7 @@ function onSaved(updated: ContentDetail) {
 
 <template>
   <div>
-    <!-- Back link; on phones the page actions sit on the same row (44px touch targets) -->
+    <!-- Back link; on phones the ⋯ menu (Düzenle, Sil) sits on the same row (44px touch target) -->
     <div class="mb-4 flex items-center justify-between gap-3">
       <NuxtLink
         to="/icerikler"
@@ -128,19 +135,8 @@ function onSaved(updated: ContentDetail) {
         v-if="content"
         class="-my-2.5 -mr-2.5 flex items-center md:hidden"
       >
-        <button
-          type="button"
-          class="inline-flex size-11 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
-          aria-label="İçeriği düzenle"
-          @click="editOpen = true"
-        >
-          <Pencil
-            class="size-5"
-            aria-hidden="true"
-          />
-        </button>
         <UiActionsMenu
-          :items="actionItems"
+          :items="mobileActionItems"
           label="Diğer işlemler"
           :sheet-title="content.title"
           @select="onAction"

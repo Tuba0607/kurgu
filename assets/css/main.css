@@ -13,6 +13,25 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Safety net only: nothing may scroll the page sideways (every known cause is fixed
+     at its source). `clip`, unlike `hidden`, creates no scroll container, so sticky
+     elements keep working. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  /* iOS Safari zooms into any focused field under 16px and the zoomed page can then be
+     panned sideways. Phones and touch screens get 16px fields; no maximum-scale needed.
+     !important on purpose: it must beat every text-size utility (e.g. .field-control). */
+  @media (max-width: 767px), (pointer: coarse) {
+    input:not([type='checkbox'], [type='radio'], [type='range']),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+
   /* Keyboard focus only: the brand ring is never drawn for pointer focus. */
   :focus-visible {
     @apply outline-none ring-2 ring-brand/60 ring-offset-2 ring-offset-canvas;

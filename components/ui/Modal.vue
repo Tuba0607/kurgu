@@ -39,13 +39,47 @@ useFocusTrap(panel, isOpen, {
 useScrollLock(isOpen)
 
 // Mobile keyboards shrink the *visual* viewport, not the layout viewport. Sizing
-// the overlay to the visual viewport keeps the footer buttons above the keyboard.
+// the overlay to the visual viewport puts the footer directly on top of the keyboard.
 const viewportStyle = ref<Record<string, string>>({})
+// With the keyboard open the home-indicator safe area is hidden behind it, so the
+// footer drops its safe-area padding (otherwise a gap shows above the keyboard).
+const keyboardOpen = ref(false)
 
 function syncVisualViewport() {
   const viewport = window.visualViewport
   if (!viewport) return
   viewportStyle.value = { top: `${viewport.offsetTop}px`, height: `${viewport.height}px` }
+  keyboardOpen.value = window.innerHeight - viewport.height > 120
+  // Measure after the new height has been applied to the DOM.
+  nextTick(() => requestAnimationFrame(revealFocusedField))
+}
+
+// Keep the focused field (label + control) fully visible inside the scrolling body,
+// also after the keyboard has resized the viewport, so its label never sits under
+// the header.
+let focusedField: HTMLElement | null = null
+const FIELD_MARGIN = 12
+
+function revealFocusedField() {
+  const field = focusedField
+  const container = body.value
+  if (!field || !container || !container.contains(field) || !field.contains(document.activeElement)) return
+  const fieldRect = field.getBoundingClientRect()
+  const bodyRect = container.getBoundingClientRect()
+  const overTop = bodyRect.top + FIELD_MARGIN - fieldRect.top
+  const underBottom = fieldRect.bottom - (bodyRect.bottom - FIELD_MARGIN)
+  if (overTop > 0) container.scrollTop -= overTop
+  // Scroll down only as far as the label can stay visible.
+  else if (underBottom > 0) container.scrollTop += Math.min(underBottom, -overTop)
+}
+
+function onFocusIn(event: FocusEvent) {
+  const target = event.target as HTMLElement
+  if (!body.value?.contains(target)) return
+  focusedField = target.closest<HTMLElement>('[data-form-field]') ?? target
+  revealFocusedField()
+  // iOS opens the keyboard with an animation; check again once it has settled.
+  setTimeout(revealFocusedField, 350)
 }
 
 function toggleViewportTracking(active: boolean) {
@@ -77,8 +111,9 @@ onBeforeUnmount(() => toggleViewportTracking(false))
     >
       <div
         v-if="open"
-        class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+        class="fixed inset-0 z-50 flex touch-pan-y touch-pinch-zoom items-end justify-center sm:items-center sm:p-6"
         :style="viewportStyle"
+        @focusin="onFocusIn"
       >
         <div
           class="absolute inset-0 bg-ink-950/30 backdrop-blur-[2px]"
@@ -140,9 +175,11 @@ onBeforeUnmount(() => toggleViewportTracking(false))
             <slot />
           </div>
 
+          <!-- One row on every size: [Vazgeç] [primary]; on phones the primary action takes the remaining width -->
           <footer
             v-if="$slots.footer"
-            class="flex shrink-0 flex-col-reverse gap-2 border-t border-ink-100 bg-ink-50/70 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:rounded-b-card sm:px-6 sm:pb-4"
+            class="flex shrink-0 gap-2 border-t border-ink-100 bg-ink-50/70 px-5 pt-4 max-sm:[&>:last-child]:flex-1 sm:justify-end sm:rounded-b-card sm:px-6 sm:pb-4"
+            :class="keyboardOpen ? 'pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'"
           >
             <slot name="footer" />
           </footer>

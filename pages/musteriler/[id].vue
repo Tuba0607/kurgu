@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, Copy, FilePlus2, FileText, Pencil, Phone, SearchX, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, FilePlus2, FileText, Pencil, SearchX, Trash2 } from 'lucide-vue-next'
 import { CONTENT_STATUS_LABELS, CONTENT_STATUSES } from '#shared/constants/content'
 import { fromSlug, QUERY_KEYS, STATUS_SLUGS } from '#shared/constants/routes'
 import { CONTENT_PAGE_SIZE } from '#shared/schemas/content'
@@ -126,16 +126,27 @@ watch(tabList, (list) => {
 }, { flush: 'post' })
 onBeforeUnmount(() => tabResizeObserver?.disconnect())
 
-// Email: one line with ellipsis; the copy button sits left of the address.
+// E-mail and phone rows: value = link, copy button on the left (✓ for 1.5 s after copying).
+type ContactKey = 'email' | 'phone'
+const contactRows = computed(() => {
+  const value = client.value
+  if (!value) return []
+  return [
+    { key: 'email' as const, label: 'E-posta', value: value.email, href: value.email ? `mailto:${value.email}` : undefined, copyLabel: 'E-postayı kopyala' },
+    // tel: links take the number without spaces: +905492335814
+    { key: 'phone' as const, label: 'Telefon', value: value.phone, href: value.phone ? `tel:${value.phone.replace(/[^\d+]/g, '')}` : undefined, copyLabel: 'Telefonu kopyala' },
+  ]
+})
+
 const { copy } = useCopyToClipboard()
-const emailCopied = ref(false)
+const copiedKey = ref<ContactKey | null>(null)
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
-async function copyEmail(email: string) {
-  if (!(await copy(email, 'E-posta adresi kopyalandı'))) return
-  emailCopied.value = true
+async function copyValue(key: ContactKey, text: string) {
+  if (!(await copy(text, 'Kopyalandı'))) return
+  copiedKey.value = key
   clearTimeout(copiedTimer)
-  copiedTimer = setTimeout(() => (emailCopied.value = false), 2000)
+  copiedTimer = setTimeout(() => (copiedKey.value = null), 1500)
 }
 
 onBeforeUnmount(() => clearTimeout(copiedTimer))
@@ -153,8 +164,15 @@ function onClientSaved(updated: ClientListItem) {
 const deleteOpen = ref(false)
 
 // "⋯" menu (header on desktop, back-link row on phones)
+// Desktop shows "Düzenle" as a button, so its ⋯ only holds the delete action;
+// on phones ⋯ is the only action button and holds both.
 const actionItems: ActionsMenuItem[] = [{ key: 'delete', label: 'Müşteriyi sil', icon: Trash2, danger: true }]
+const mobileActionItems: ActionsMenuItem[] = [
+  { key: 'edit', label: 'Düzenle', icon: Pencil },
+  { key: 'delete', label: 'Sil', icon: Trash2, danger: true, separatorBefore: true },
+]
 function onAction(key: string) {
+  if (key === 'edit') clientModalOpen.value = true
   if (key === 'delete') deleteOpen.value = true
 }
 const deleting = ref(false)
@@ -200,7 +218,7 @@ function onContentSaved() {
 
 <template>
   <div>
-    <!-- Back link; on phones the page actions sit on the same row (44px touch targets) -->
+    <!-- Back link; on phones the ⋯ menu (Düzenle, Sil) sits on the same row (44px touch target) -->
     <div class="mb-4 flex items-center justify-between gap-3">
       <NuxtLink
         to="/musteriler"
@@ -216,19 +234,8 @@ function onContentSaved() {
         v-if="client"
         class="-my-2.5 -mr-2.5 flex items-center md:hidden"
       >
-        <button
-          type="button"
-          class="inline-flex size-11 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
-          aria-label="Müşteriyi düzenle"
-          @click="clientModalOpen = true"
-        >
-          <Pencil
-            class="size-5"
-            aria-hidden="true"
-          />
-        </button>
         <UiActionsMenu
-          :items="actionItems"
+          :items="mobileActionItems"
           label="Diğer işlemler"
           :sheet-title="client.name"
           @select="onAction"
@@ -379,25 +386,29 @@ function onContentSaved() {
                 {{ client.industry ?? EMPTY_VALUE }}
               </dd>
             </div>
-            <div class="flex justify-between gap-4 py-2.5">
+            <!-- E-mail and phone: the value is the link (mailto: / tel:) and looks like the other
+                 values; the copy button sits left of it, so every value ends on the same right edge.
+                 One line, "…" when it does not fit, full value in the title. -->
+            <div
+              v-for="row in contactRows"
+              :key="row.key"
+              class="flex justify-between gap-4 py-2.5"
+            >
               <dt class="shrink-0 text-ink-500">
-                E-posta
+                {{ row.label }}
               </dt>
-              <dd class="flex min-w-0 flex-1 items-center justify-end">
-                <template v-if="client.email">
-                  <!-- Right-aligned group: the copy button takes the icon slot left of the address,
-                       so the address ends on the same right edge as the other values.
-                       One line, "…" when it does not fit, full address in the title. -->
+              <dd class="flex min-w-0 flex-1 items-center justify-end gap-0.5">
+                <template v-if="row.value">
                   <button
                     type="button"
                     class="-my-1 flex size-7 shrink-0 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900"
-                    :aria-label="emailCopied ? 'E-posta adresi kopyalandı' : 'E-posta adresini kopyala'"
-                    :title="emailCopied ? 'Kopyalandı' : 'E-posta adresini kopyala'"
-                    @click="copyEmail(client.email)"
+                    :aria-label="copiedKey === row.key ? 'Kopyalandı' : row.copyLabel"
+                    :title="copiedKey === row.key ? 'Kopyalandı' : row.copyLabel"
+                    @click="copyValue(row.key, row.value)"
                   >
                     <Check
-                      v-if="emailCopied"
-                      class="size-3.5 text-emerald-600"
+                      v-if="copiedKey === row.key"
+                      class="size-3.5 text-status-published"
                       aria-hidden="true"
                     />
                     <Copy
@@ -407,35 +418,12 @@ function onContentSaved() {
                     />
                   </button>
                   <a
-                    :href="`mailto:${client.email}`"
-                    :title="client.email"
-                    class="min-w-0 truncate font-medium text-ink-600 hover:text-ink-900 hover:underline"
-                  >{{ client.email }}</a>
+                    :href="row.href"
+                    :title="row.value"
+                    class="-mx-1 min-w-0 truncate rounded px-1 font-medium text-ink-900 decoration-ink-400 underline-offset-2 active:bg-ink-100 [@media(hover:hover)]:hover:underline"
+                    :class="row.key === 'phone' && 'tabular-nums'"
+                  >{{ row.value }}</a>
                 </template>
-                <span
-                  v-else
-                  class="text-ink-900"
-                >{{ EMPTY_VALUE }}</span>
-              </dd>
-            </div>
-            <div class="flex justify-between gap-4 py-2.5">
-              <dt class="shrink-0 text-ink-500">
-                Telefon
-              </dt>
-              <dd class="flex min-w-0 flex-1 justify-end">
-                <!-- Same pattern as the e-mail: one line, "…" if needed, full value in the title -->
-                <a
-                  v-if="client.phone"
-                  :href="`tel:${client.phone.replace(/[^\d+]/g, '')}`"
-                  :title="client.phone"
-                  class="flex min-w-0 items-center gap-1.5 font-medium tabular-nums text-ink-600 hover:text-ink-900 hover:underline"
-                >
-                  <Phone
-                    class="size-3.5 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span class="min-w-0 truncate">{{ client.phone }}</span>
-                </a>
                 <span
                   v-else
                   class="text-ink-900"
