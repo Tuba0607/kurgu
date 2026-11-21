@@ -274,14 +274,16 @@ function onContentSaved() {
           <div class="flex items-center justify-between gap-3">
             <h2
               id="client-info-title"
-              class="section-label"
+              class="section-label whitespace-nowrap"
             >
               Müşteri bilgileri
             </h2>
-            <div class="-my-1 -mr-2 flex items-center">
+            <!-- Below 393px the actions are icon-only (aria-label keeps the name) so the heading stays on one line -->
+            <div class="-my-1 -mr-2 flex shrink-0 items-center">
               <UiButton
                 variant="ghost"
                 size="sm"
+                class="max-[392px]:w-8 max-[392px]:px-0"
                 aria-label="Müşteri bilgilerini düzenle"
                 @click="clientModalOpen = true"
               >
@@ -291,11 +293,12 @@ function onContentSaved() {
                     aria-hidden="true"
                   />
                 </template>
-                Düzenle
+                <span class="max-[392px]:sr-only">Düzenle</span>
               </UiButton>
               <UiButton
                 variant="ghost"
                 size="sm"
+                class="max-[392px]:w-8 max-[392px]:px-0"
                 aria-label="Müşteriyi sil"
                 @click="deleteOpen = true"
               >
@@ -305,7 +308,7 @@ function onContentSaved() {
                     aria-hidden="true"
                   />
                 </template>
-                Sil
+                <span class="max-[392px]:sr-only">Sil</span>
               </UiButton>
             </div>
           </div>
