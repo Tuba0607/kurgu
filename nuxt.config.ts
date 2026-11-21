@@ -18,6 +18,13 @@ export default defineNuxtConfig({
     },
   },
 
+  runtimeConfig: {
+    public: {
+      // Absolute base for link previews (og:url, og:image); NUXT_PUBLIC_SITE_URL overrides it.
+      siteUrl: 'https://kurgu-panel.vercel.app',
+    },
+  },
+
   compatibilityDate: '2025-07-15',
 
   typescript: {
