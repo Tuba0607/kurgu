@@ -260,4 +260,4 @@ Gerçek bağlantı bilgileri yalnızca Vercel ortam değişkenlerinde ve yerel `
 - **Arşivleme:** Müşteri silmek yerine arşivlemek (içerikler korunur, listelerde gizlenir); şu an silme işlemi içerikleri de kalıcı olarak siler.
 - Kimlik doğrulama ve rol bazlı yetki (hesap yöneticisi / yönetici).
 - ⌘K / Ctrl+K genel arama ve klavye kısayolları.
-- Ekran görüntüleri: `docs/screenshots/` klasörüne eklenecek.
+- **Bağımlılık güvenlik bulguları:** `npm audit` production bağımlılıklarında 12 dolaylı bulgu gösteriyor (8 orta, 4 yüksek). Hepsi Nuxt 3 (`@nuxt/nitro-server`, `nitropack` ve alt paketleri) ve Prisma 6 (`@prisma/config`, `effect`, `deepmerge-ts`) üzerinden geliyor; `npm audit fix` majör olmayan bir düzeltme uygulayamıyor. Kalıcı çözüm **Nuxt 4** ve **Prisma 7**'ye geçiş; ikisi de kırıcı değişiklik içerdiği (dizin yapısı, Prisma yapılandırması) ve teslimden önce tam regresyon testi gerektirdiği için ayrı bir iş olarak planlandı.
