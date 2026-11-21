@@ -29,6 +29,8 @@ const props = withDefaults(defineProps<{
   label: string
   placeholder?: string
   maxHeight?: number
+  /** Lists the selected option first (✓, highlighted, divider below), e.g. a form field. */
+  pinSelected?: boolean
 }>(), {
   placeholder: 'Seçin',
   maxHeight: 288,
@@ -56,8 +58,15 @@ const position = ref({ left: 0, width: 0, offset: 0, maxHeight: props.maxHeight 
 // (No item limit here: a listbox has no search field to narrow it down.)
 const inline = usePhoneLayout()
 
-const selectedIndex = computed(() => props.options.findIndex(option => option.value === model.value))
-const selectedLabel = computed(() => props.options[selectedIndex.value]?.label ?? props.placeholder)
+// The options as shown: with pinSelected, a real selection (not the empty value) comes
+// first and is not repeated; the others keep their own order.
+const pinned = computed(() => props.pinSelected && !!model.value && props.options.some(option => option.value === model.value))
+const items = computed(() => (pinned.value
+  ? [props.options.find(option => option.value === model.value)!, ...props.options.filter(option => option.value !== model.value)]
+  : props.options))
+
+const selectedIndex = computed(() => items.value.findIndex(option => option.value === model.value))
+const selectedLabel = computed(() => items.value[selectedIndex.value]?.label ?? props.placeholder)
 
 const listStyle = computed(() => ({
   left: `${position.value.left}px`,
@@ -72,7 +81,7 @@ function updatePosition() {
   const rect = trigger.value?.getBoundingClientRect()
   if (!rect) return
 
-  const desiredHeight = Math.min(props.maxHeight, props.options.length * OPTION_HEIGHT + LIST_PADDING)
+  const desiredHeight = Math.min(props.maxHeight, items.value.length * OPTION_HEIGHT + LIST_PADDING)
   const spaceBelow = window.innerHeight - rect.bottom - GAP - VIEWPORT_MARGIN
   const spaceAbove = rect.top - GAP - VIEWPORT_MARGIN
 
@@ -95,8 +104,8 @@ function scrollActiveIntoView() {
 }
 
 function setActive(index: number) {
-  if (props.options.length === 0) return
-  activeIndex.value = Math.min(Math.max(index, 0), props.options.length - 1)
+  if (items.value.length === 0) return
+  activeIndex.value = Math.min(Math.max(index, 0), items.value.length - 1)
   scrollActiveIntoView()
 }
 
@@ -136,7 +145,7 @@ function close() {
 }
 
 function select(index: number) {
-  const option = props.options[index]
+  const option = items.value[index]
   if (!option) return
   model.value = option.value
   reopenGuardUntil = Date.now() + REOPEN_GUARD_MS
@@ -154,13 +163,13 @@ function handleTypeahead(key: string) {
   typeaheadTimer = setTimeout(() => (typeahead = ''), TYPEAHEAD_RESET_MS)
 
   const start = typeahead.length === 1 ? activeIndex.value + 1 : Math.max(activeIndex.value, 0)
-  const ordered = [...props.options.keys()].map(offset => (start + offset) % props.options.length)
-  const match = ordered.find(index => props.options[index]!.label.toLocaleLowerCase('tr-TR').startsWith(typeahead))
+  const ordered = [...items.value.keys()].map(offset => (start + offset) % items.value.length)
+  const match = ordered.find(index => items.value[index]!.label.toLocaleLowerCase('tr-TR').startsWith(typeahead))
   if (match !== undefined) setActive(match)
 }
 
 function onKeydown(event: KeyboardEvent) {
-  const last = props.options.length - 1
+  const last = items.value.length - 1
 
   if (!isOpen.value) {
     if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
@@ -240,7 +249,8 @@ onBeforeUnmount(() => {
         :class="selectedIndex < 0 && 'text-ink-400'"
       >{{ selectedLabel }}</span>
       <ChevronDown
-        class="size-4 shrink-0 text-ink-400"
+        class="size-4 shrink-0 text-ink-400 transition-transform"
+        :class="isOpen && 'rotate-180'"
         aria-hidden="true"
       />
     </div>
@@ -262,28 +272,37 @@ onBeforeUnmount(() => {
         :data-placement="placement"
         @mousedown.prevent
       >
-        <li
-          v-for="(option, index) in options"
-          :id="optionId(index)"
+        <template
+          v-for="(option, index) in items"
           :key="option.value"
-          role="option"
-          :aria-selected="option.value === model"
-          class="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3"
-          :class="[
-            inline ? 'min-h-11 text-base' : 'min-h-10 text-sm',
-            index === activeIndex ? 'bg-ink-100' : option.value === model && 'bg-ink-50',
-            option.value === model ? 'font-medium text-ink-900' : 'text-ink-700',
-          ]"
-          @mousemove="activeIndex = index"
-          @click="select(index)"
         >
-          <span class="truncate">{{ option.label }}</span>
-          <Check
-            v-if="option.value === model"
-            class="size-4 shrink-0 text-ink-900"
+          <li
+            :id="optionId(index)"
+            role="option"
+            :aria-selected="option.value === model"
+            class="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3"
+            :class="[
+              inline ? 'min-h-11 text-base' : 'min-h-10 text-sm',
+              index === activeIndex ? 'bg-ink-100' : option.value === model && 'bg-ink-50',
+              option.value === model ? 'font-medium text-ink-900' : 'text-ink-700',
+            ]"
+            @mousemove="activeIndex = index"
+            @click="select(index)"
+          >
+            <span class="truncate">{{ option.label }}</span>
+            <Check
+              v-if="option.value === model"
+              class="size-4 shrink-0 text-ink-900"
+              aria-hidden="true"
+            />
+          </li>
+          <li
+            v-if="pinned && index === 0"
+            role="presentation"
             aria-hidden="true"
+            class="-mx-1 my-1 h-px bg-ink-100"
           />
-        </li>
+        </template>
       </ul>
     </Teleport>
   </div>

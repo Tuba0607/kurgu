@@ -44,9 +44,11 @@ const form = reactive({
   body: '',
 })
 
+// "Platform seçilmedi" first, the platforms alphabetically.
 const platformOptions = [
   { value: '', label: 'Platform seçilmedi' },
-  ...SOCIAL_PLATFORMS.map(value => ({ value, label: SOCIAL_PLATFORM_LABELS[value] })),
+  ...SOCIAL_PLATFORMS.map(value => ({ value, label: SOCIAL_PLATFORM_LABELS[value] }))
+    .sort((a, b) => compareTurkish(a.label, b.label)),
 ]
 
 // Character counter: the platform limit for social posts (same source as the preview),
@@ -298,6 +300,7 @@ async function submit() {
             :id="field.id"
             v-model="form.platform"
             label="Platform"
+            pin-selected
             :aria-describedby="field.describedBy"
             :options="platformOptions"
           />

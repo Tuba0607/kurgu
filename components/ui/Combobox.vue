@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Check, Plus } from 'lucide-vue-next'
+import { Check, ChevronDown, Plus } from 'lucide-vue-next'
 import { toTurkishTitleCase, turkishKey } from '#shared/utils/text'
 
 /**
  * Editable combobox (WAI-ARIA "combobox with list autocomplete"): the user types
  * freely, matching suggestions are listed and a new value can be added.
  * Focus stays in the input; the highlighted option uses aria-activedescendant.
+ * Suggestions are alphabetical; until the user types, the current value is pinned on
+ * top (✓, highlighted, divider below) and not repeated further down.
  * Desktop: floating list. Phones: the list opens inside the form flow (pushing the
  * fields below down), at most 5 rows tall, and is scrolled into view with the input.
  */
@@ -38,9 +40,16 @@ interface Option { value: string, label: string, isNew: boolean }
 // filters once the user starts typing (so an existing value is never "lost").
 const filtering = ref(false)
 
+const sortedSuggestions = computed(() => [...props.suggestions].sort(compareTurkish))
+const isCurrent = (item: string) => turkishKey(item) === turkishKey(model.value)
+const pinned = computed(() => !filtering.value && !!model.value.trim() && sortedSuggestions.value.some(isCurrent))
+
 const allOptions = computed<Option[]>(() => {
   const query = filtering.value ? turkishKey(model.value) : ''
-  const matches = props.suggestions
+  const ordered = pinned.value
+    ? [sortedSuggestions.value.find(isCurrent)!, ...sortedSuggestions.value.filter(item => !isCurrent(item))]
+    : sortedSuggestions.value
+  const matches = ordered
     .filter(item => !query || turkishKey(item).includes(query))
     .map(item => ({ value: item, label: item, isNew: false }))
   const exists = props.suggestions.some(item => turkishKey(item) === turkishKey(model.value))
@@ -78,6 +87,17 @@ function open() {
 function close() {
   isOpen.value = false
   activeIndex.value = -1
+}
+
+function onFocus() {
+  open()
+  // Phones: caret at the end, never a selected text.
+  if (inline.value) moveCaretToEnd(input.value)
+}
+
+function onClick() {
+  open()
+  if (inline.value) moveCaretToEnd(input.value)
 }
 
 function select(option: Option) {
@@ -146,25 +166,34 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
     ref="field"
     class="relative"
   >
-    <input
-      ref="input"
-      v-model="model"
-      v-bind="$attrs"
-      type="text"
-      role="combobox"
-      autocomplete="off"
-      aria-autocomplete="list"
-      :aria-expanded="showList"
-      :aria-controls="listboxId"
-      :aria-activedescendant="showList && activeIndex >= 0 ? optionId(activeIndex) : undefined"
-      :aria-invalid="invalid || undefined"
-      class="field-control h-10 px-3"
-      @focus="open"
-      @click="open"
-      @input="onInput"
-      @keydown="onKeydown"
-      @blur="onBlur"
-    >
+    <!-- Input and chevron have their own box, so the chevron stays centred in the
+         input even when the phone list opens below it. -->
+    <div class="relative">
+      <input
+        ref="input"
+        v-model="model"
+        v-bind="$attrs"
+        type="text"
+        role="combobox"
+        autocomplete="off"
+        aria-autocomplete="list"
+        :aria-expanded="showList"
+        :aria-controls="listboxId"
+        :aria-activedescendant="showList && activeIndex >= 0 ? optionId(activeIndex) : undefined"
+        :aria-invalid="invalid || undefined"
+        class="field-control h-10 pl-3 pr-9"
+        @focus="onFocus"
+        @click="onClick"
+        @input="onInput"
+        @keydown="onKeydown"
+        @blur="onBlur"
+      >
+      <ChevronDown
+        class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-400 transition-transform"
+        :class="showList && 'rotate-180'"
+        aria-hidden="true"
+      />
+    </div>
     <Teleport
       to="body"
       :disabled="inline"
@@ -177,30 +206,43 @@ watch([activeIndex, isOpen], async ([index, openNow]) => {
         :class="inline ? 'mt-1 w-full' : 'z-[70] overflow-y-auto overscroll-contain shadow-popover'"
         :style="inline ? undefined : floatingStyle"
       >
-        <li
+        <template
           v-for="(option, index) in options"
-          :id="optionId(index)"
           :key="`${option.isNew}-${option.value}`"
-          role="option"
-          :aria-selected="index === activeIndex"
-          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
-          :class="[index === activeIndex ? 'bg-ink-100 text-ink-900' : 'text-ink-700', inline ? 'min-h-11 text-base' : 'text-sm']"
-          @mousedown.prevent
-          @click="select(option)"
-          @mousemove="activeIndex = index"
         >
-          <Plus
-            v-if="option.isNew"
-            class="size-4 shrink-0 text-ink-500"
+          <li
+            :id="optionId(index)"
+            role="option"
+            :aria-selected="index === activeIndex"
+            class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
+            :class="[
+              index === activeIndex ? 'bg-ink-100 text-ink-900' : !option.isNew && isCurrent(option.value) ? 'bg-ink-50 text-ink-900' : 'text-ink-700',
+              !option.isNew && isCurrent(option.value) && 'font-medium',
+              inline ? 'min-h-11 text-base' : 'text-sm',
+            ]"
+            @mousedown.prevent
+            @click="select(option)"
+            @mousemove="activeIndex = index"
+          >
+            <Plus
+              v-if="option.isNew"
+              class="size-4 shrink-0 text-ink-500"
+              aria-hidden="true"
+            />
+            <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+            <Check
+              v-if="!option.isNew && turkishKey(option.value) === turkishKey(model)"
+              class="size-4 shrink-0 text-ink-900"
+              aria-hidden="true"
+            />
+          </li>
+          <li
+            v-if="pinned && index === 0"
+            role="presentation"
             aria-hidden="true"
+            class="-mx-1 my-1 h-px bg-ink-100"
           />
-          <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
-          <Check
-            v-if="!option.isNew && turkishKey(option.value) === turkishKey(model)"
-            class="size-4 shrink-0 text-ink-900"
-            aria-hidden="true"
-          />
-        </li>
+        </template>
         <li
           v-if="hasMore"
           role="presentation"

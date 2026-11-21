@@ -58,3 +58,21 @@ export async function revealInlineList(element: HTMLElement | null | undefined) 
   else if (rect.top < view.top + EDGE) delta = rect.top - (view.top + EDGE)
   if (delta) container.scrollBy({ top: delta, behavior: 'smooth' })
 }
+
+/**
+ * Phones: puts the caret at the end of the text instead of selecting it, so a tap
+ * never replaces the current value by accident. Deferred because iOS places the
+ * caret at the tap position after the focus / click events.
+ */
+export function moveCaretToEnd(input: HTMLInputElement | null | undefined) {
+  if (!input) return
+  setTimeout(() => {
+    const end = input.value.length
+    input.setSelectionRange(end, end)
+  }, 0)
+}
+
+/** Alphabetical order for Turkish labels (Ç after C, İ after I, Ş after S…). */
+export function compareTurkish(a: string, b: string) {
+  return a.localeCompare(b, 'tr-TR', { sensitivity: 'base' })
+}
